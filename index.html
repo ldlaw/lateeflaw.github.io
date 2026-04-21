@@ -1,0 +1,2211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lateef Law — Enterprise Network Architect & Cloud Infrastructure Engineer</title>
+  <meta name="description" content="Lateef Law — Dual CCIE-certified Enterprise Network Architect and Cloud Infrastructure Engineer. 15+ years designing mission-critical DoD and enterprise networks. TS Clearance. BEYA 2023.">
+  <meta name="author" content="Lateef Law">
+  <meta name="keywords" content="Network Architect, Cloud Infrastructure Engineer, CCIE, DoD Networking, Enterprise Networking, Network Automation, Azure, AWS, MPLS, BGP, TS Clearance">
+  <meta property="og:title" content="Lateef Law — Enterprise Network Architect & Cloud Infrastructure Engineer">
+  <meta property="og:description" content="Dual CCIE-certified Network Architect with 15+ years in DoD infrastructure, multi-cloud architecture, and network automation. CCIE Enterprise #57597 · CCIE SP · TS Clearance Active.">
+  <meta property="og:url" content="https://lateeflaw.info">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    /* ═══════════════════════════════════════
+       RESET & ROOT
+    ═══════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg0:        #080d1a;
+      --bg1:        #0d1425;
+      --bg2:        #111c30;
+      --accent:     #00d4ff;
+      --accent-dim: rgba(0,212,255,0.1);
+      --accent-glow:rgba(0,212,255,0.3);
+      --gold:       #f0b429;
+      --green:      #22c55e;
+      --text:       #c8d8e8;
+      --muted:      #7a90a8;
+      --border:     rgba(0,212,255,0.12);
+      --border-mid: rgba(0,212,255,0.22);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg0);
+      color: var(--text);
+      font-family: 'Barlow', sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      overflow-x: hidden;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── SCROLLBAR ─── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg0); }
+    ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+
+    /* ─── SELECTION ─── */
+    ::selection { background: var(--accent); color: #000; }
+
+    /* ─── UTILITIES ─── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 2.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .mono {
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: 0.1em;
+    }
+
+    .section-tag {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--accent);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+      opacity: 0.85;
+    }
+
+    .section-heading {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: clamp(2.2rem, 4.5vw, 3.2rem);
+      line-height: 1.0;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      margin-bottom: 1rem;
+    }
+
+    section {
+      padding: 5rem 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ─── REVEAL ANIMATIONS ─── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.7s cubic-bezier(0.4,0,0.2,1), transform 0.7s cubic-bezier(0.4,0,0.2,1);
+    }
+    .reveal-left {
+      opacity: 0;
+      transform: translateX(-40px);
+      transition: opacity 0.7s cubic-bezier(0.4,0,0.2,1), transform 0.7s cubic-bezier(0.4,0,0.2,1);
+    }
+    .reveal-right {
+      opacity: 0;
+      transform: translateX(40px);
+      transition: opacity 0.7s cubic-bezier(0.4,0,0.2,1), transform 0.7s cubic-bezier(0.4,0,0.2,1);
+    }
+    .reveal.visible, .reveal-left.visible, .reveal-right.visible {
+      opacity: 1;
+      transform: translate(0);
+    }
+
+    /* ═══════════════════════════════════════
+       NAVBAR
+    ═══════════════════════════════════════ */
+    #navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 999;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid rgba(0,212,255,0.25);
+      transition: background 0.35s, box-shadow 0.35s, border-color 0.35s;
+    }
+    #navbar.scrolled {
+      background: rgba(8,13,26,0.92);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom-color: rgba(0,212,255,0.4);
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      gap: 3rem;
+      width: 100%;
+    }
+    .nav-hamburger-wrap { margin-left: auto; }
+    .nav-logo {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 1.45rem;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .nav-logo span { color: var(--accent); }
+
+    .nav-links {
+      display: flex;
+      gap: 2.5rem;
+      list-style: none;
+    }
+    .nav-links a {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+      position: relative;
+    }
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px; left: 0; right: 100%;
+      height: 1px;
+      background: var(--accent);
+      transition: right 0.25s ease;
+    }
+    .nav-links a:hover { color: var(--accent); }
+    .nav-links a:hover::after { right: 0; }
+
+    /* Hamburger */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 4px;
+    }
+    .hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--text);
+      border-radius: 1px;
+      transition: all 0.3s ease;
+    }
+    .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(8,13,26,0.98);
+      backdrop-filter: blur(20px);
+      z-index: 998;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2.5rem;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 2.2rem;
+      color: var(--text);
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      transition: color 0.2s;
+    }
+    .mobile-menu a:hover { color: var(--accent); }
+
+    /* ═══════════════════════════════════════
+       HERO
+    ═══════════════════════════════════════ */
+    #hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: 8rem 0 5rem;
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Hero scan-line (clipped to hero section) ── */
+    #scanline {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        transparent 30%,
+        rgba(0,212,255,0.15) 38%,
+        rgba(0,212,255,0.55) 50%,
+        rgba(0,212,255,0.15) 62%,
+        transparent 70%,
+        transparent 100%
+      );
+      box-shadow: 0 0 12px rgba(0,212,255,0.4), 0 0 30px rgba(0,212,255,0.15);
+      animation: scan-sweep 6s linear infinite;
+      pointer-events: none;
+      z-index: 10;
+    }
+    @keyframes scan-sweep {
+      0%   { top: 0%;   opacity: 0; }
+      8%   { top: 5%;   opacity: 1; }
+      80%  { top: 80%;  opacity: 1; }
+      96%  { top: 96%;  opacity: 0; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    /* Radial glow top */
+    #hero::before {
+      content: '';
+      position: absolute;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 600px;
+      background: radial-gradient(ellipse at center, rgba(0,212,255,0.07) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .hero-inner { position: relative; z-index: 1; }
+
+    .hero-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--accent);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+    .hero-label::before {
+      content: '[ ';
+      opacity: 0.6;
+    }
+    .hero-label::after {
+      content: ' ]';
+      opacity: 0.6;
+    }
+
+    .hero-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: clamp(3rem, 7vw, 6rem);
+      line-height: 0.9;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+    .hero-name .accent { color: var(--accent); }
+
+    .hero-typewriter {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      margin-bottom: 1.75rem;
+      min-height: 1.4em;
+    }
+    .hero-typewriter .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: var(--accent);
+      margin-left: 2px;
+      vertical-align: middle;
+      animation: blink-cursor 0.8s step-end infinite;
+    }
+    @keyframes blink-cursor {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-bottom: 1.75rem;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.3rem 0.8rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 2px;
+    }
+    .badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .badge-blue {
+      background: rgba(0,212,255,0.08);
+      border: 1px solid rgba(0,212,255,0.3);
+      color: var(--accent);
+    }
+    .badge-blue .badge-dot { background: var(--accent); }
+    .badge-gold {
+      background: rgba(240,180,41,0.08);
+      border: 1px solid rgba(240,180,41,0.3);
+      color: var(--gold);
+    }
+    .badge-gold .badge-dot { background: var(--gold); }
+    .badge-green {
+      background: rgba(34,197,94,0.08);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--green);
+    }
+    .badge-green .badge-dot { background: var(--green); animation: pulse-green 2s ease-in-out infinite; }
+    @keyframes pulse-green {
+      0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+      50%      { opacity:0.8; box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+    }
+
+    .hero-tagline {
+      font-size: 1rem;
+      color: var(--muted);
+      max-width: 580px;
+      line-height: 1.75;
+      margin-bottom: 2.5rem;
+      font-weight: 300;
+    }
+
+    .hero-ctas {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.7rem 1.75rem;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      text-decoration: none;
+      border-radius: 2px;
+      transition: all 0.22s ease;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+      border: 1px solid var(--accent);
+    }
+    .btn-primary:hover {
+      background: transparent;
+      color: var(--accent);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    .btn-outline:hover {
+      background: var(--accent);
+      color: #000;
+    }
+
+    /* ═══════════════════════════════════════
+       HERO NETWORK TOPOLOGY — background SVG
+    ═══════════════════════════════════════ */
+    #hero-topo {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 48%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0;
+      animation: topo-fade-in 2.5s ease 1s forwards;
+    }
+
+    @keyframes topo-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 0.6; }
+    }
+
+    @keyframes node-pulse {
+      0%, 100% { opacity: 0.9; }
+      50%       { opacity: 0.5; }
+    }
+
+    @keyframes halo-pulse {
+      0%, 100% { opacity: 0.5; }
+      50%       { opacity: 0.18; }
+    }
+
+    @media (max-width: 768px) {
+      #hero-topo { display: none; }
+    }
+
+    /* ═══════════════════════════════════════
+       STATS BAR
+    ═══════════════════════════════════════ */
+    #stats {
+      padding: 0;
+      background: var(--bg1);
+      border-bottom: 1px solid var(--border);
+      border-top: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .stat-item {
+      padding: 2.25rem 2rem;
+      text-align: center;
+      border-right: 1px solid var(--border);
+      transition: background 0.2s;
+      cursor: default;
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-item:hover { background: rgba(0,212,255,0.04); }
+    .stat-value {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.02em;
+    }
+    .stat-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    /* ═══════════════════════════════════════
+       ABOUT
+    ═══════════════════════════════════════ */
+    #about { background: var(--bg1); border-bottom: 1px solid var(--border); }
+
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 5rem;
+      align-items: start;
+    }
+
+    .about-stats-mini {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 2rem;
+    }
+    .about-stat {
+      background: var(--bg2);
+      padding: 1.1rem 1rem;
+      text-align: center;
+    }
+    .about-stat-val {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 1.6rem;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .about-stat-lbl {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 0.25rem;
+    }
+
+    .about-bio {
+      font-size: 1rem;
+      color: var(--muted);
+      line-height: 1.85;
+      font-weight: 300;
+    }
+    .about-bio strong { color: var(--text); font-weight: 600; }
+    .about-bio p + p { margin-top: 1rem; }
+
+    .about-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.75rem;
+    }
+    .about-tag {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      padding: 0.28rem 0.7rem;
+      border: 1px solid var(--border-mid);
+      color: var(--muted);
+      border-radius: 2px;
+      text-transform: uppercase;
+    }
+
+    /* ═══════════════════════════════════════
+       SKILLS
+    ═══════════════════════════════════════ */
+    #skills { background: var(--bg0); border-bottom: 1px solid var(--border); }
+
+    .skills-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 3rem;
+    }
+
+    .skill-card {
+      background: var(--bg1);
+      padding: 1.75rem;
+      transition: background 0.2s;
+      cursor: default;
+      perspective: 800px;
+    }
+    .skill-card:hover { background: var(--bg2); }
+    .skill-card-inner {
+      transition: transform 0.15s ease;
+      transform-style: preserve-3d;
+    }
+
+    .skill-card-num {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--accent);
+      letter-spacing: 0.12em;
+      opacity: 0.6;
+      margin-bottom: 0.4rem;
+    }
+    .skill-card-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+    .tag-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .pill {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      padding: 0.25rem 0.6rem;
+      background: rgba(0,212,255,0.06);
+      border: 1px solid rgba(0,212,255,0.15);
+      color: var(--muted);
+      border-radius: 2px;
+      letter-spacing: 0.06em;
+      cursor: default;
+      transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    }
+    .pill:hover {
+      background: rgba(0,212,255,0.15);
+      color: var(--accent);
+      box-shadow: 0 0 10px rgba(0,212,255,0.2);
+    }
+
+    /* ═══════════════════════════════════════
+       EXPERIENCE
+    ═══════════════════════════════════════ */
+    #experience { background: var(--bg1); border-bottom: 1px solid var(--border); }
+
+    .award-callout {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.1rem 1.5rem;
+      background: rgba(240,180,41,0.06);
+      border: 1px solid rgba(240,180,41,0.25);
+      border-left: 3px solid var(--gold);
+      border-radius: 3px;
+      margin-bottom: 3rem;
+    }
+    .award-callout .award-icon {
+      font-size: 1.2rem;
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+    .award-callout p {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--gold);
+      letter-spacing: 0.06em;
+    }
+
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .tl-item {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 2rem;
+      padding: 2rem 0;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      transition: background 0.2s;
+    }
+    .tl-item:last-child { border-bottom: none; }
+    .tl-item::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: transparent;
+      transition: background 0.3s;
+    }
+    .tl-item:hover::before { background: var(--accent); }
+
+    .tl-meta {
+      padding-top: 3px;
+    }
+    .tl-dates {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      line-height: 1.6;
+      margin-bottom: 0.5rem;
+    }
+    .tl-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse-dot 2.5s ease-in-out infinite;
+    }
+    .tl-item:not(:first-child) .tl-dot {
+      background: var(--muted);
+      animation: none;
+    }
+    @keyframes pulse-dot {
+      0%,100% { box-shadow: 0 0 0 0 rgba(0,212,255,0.4); }
+      50%      { box-shadow: 0 0 0 5px rgba(0,212,255,0); }
+    }
+
+    .tl-content {}
+    .tl-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.15rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      margin-bottom: 0.2rem;
+    }
+    .tl-company {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      margin-bottom: 0.25rem;
+    }
+    .tl-location {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 0.65rem;
+    }
+    .tl-desc {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.7;
+      font-weight: 300;
+    }
+
+    /* ═══════════════════════════════════════
+       WRITING
+    ═══════════════════════════════════════ */
+    #writing { background: var(--bg1); border-bottom: 1px solid var(--border); }
+
+    .article-card {
+      background: var(--bg2);
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      border-left: 3px solid transparent;
+      transition: background 0.2s, border-color 0.3s;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+    }
+    .article-card:hover {
+      background: #152035;
+      border-left-color: var(--accent);
+    }
+    .article-card-category {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--accent);
+      letter-spacing: 0.14em;
+      opacity: 0.8;
+      text-transform: uppercase;
+    }
+    .article-card-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .article-card-desc {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.75;
+      font-weight: 300;
+      flex: 1;
+    }
+    .article-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+    .article-card-date {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+    .article-link {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .article-link:hover { color: var(--text); }
+
+    .writing-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-top: 3rem;
+    }
+
+    /* ═══════════════════════════════════════
+       CURRENTLY LEARNING
+    ═══════════════════════════════════════ */
+    #learning { background: var(--bg0); border-bottom: 1px solid var(--border); }
+
+    .learning-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+
+    .learning-card {
+      background: var(--bg1);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 2rem;
+      border-left: 3px solid transparent;
+      transition: background 0.2s, border-color 0.3s;
+    }
+    .learning-card:hover {
+      background: var(--bg2);
+      border-left-color: var(--accent);
+    }
+
+    .learning-card-category {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--accent);
+      letter-spacing: 0.14em;
+      opacity: 0.8;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    .learning-card-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text);
+      line-height: 1.2;
+      margin-bottom: 0.75rem;
+    }
+    .learning-card-desc {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.75;
+      font-weight: 300;
+      margin-bottom: 1.5rem;
+    }
+
+    .learning-meta {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .learning-start-date {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    .phase-track {
+      margin-bottom: 1.5rem;
+    }
+    .phase-track-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+    .phase-steps {
+      display: flex;
+      gap: 0;
+      position: relative;
+    }
+    .phase-step {
+      flex: 1;
+      padding: 0.6rem 0.75rem;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-right: none;
+      position: relative;
+    }
+    .phase-step:last-child { border-right: 1px solid var(--border); }
+    .phase-step.active {
+      background: rgba(0,212,255,0.08);
+      border-color: rgba(0,212,255,0.35);
+    }
+    .phase-step.active + .phase-step { border-left-color: rgba(0,212,255,0.35); }
+    .phase-step.complete {
+      background: rgba(34,197,94,0.06);
+      border-color: rgba(34,197,94,0.25);
+    }
+    .phase-step-num {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+    }
+    .phase-step.active .phase-step-num { color: var(--accent); }
+    .phase-step.complete .phase-step-num { color: var(--green); }
+    .phase-step.upcoming .phase-step-num { color: var(--muted); opacity: 0.6; }
+    .phase-step-name {
+      font-size: 0.72rem;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+    .phase-step.active .phase-step-name { color: var(--accent); }
+    .phase-step.complete .phase-step-name { color: var(--green); }
+    .phase-step.upcoming .phase-step-name { color: var(--muted); opacity: 0.7; }
+    .phase-step-status {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.55rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 0.3rem;
+    }
+    .phase-step.active .phase-step-status { color: var(--accent); }
+    .phase-step.complete .phase-step-status { color: var(--green); }
+    .phase-step.upcoming .phase-step-status { color: var(--muted); opacity: 0.5; }
+
+    .target-certs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .target-cert-badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      padding: 0.3rem 0.7rem;
+      border: 1px solid rgba(0,212,255,0.3);
+      background: rgba(0,212,255,0.06);
+      color: var(--accent);
+      border-radius: 2px;
+      text-transform: uppercase;
+    }
+    .learning-why {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      font-style: italic;
+      opacity: 0.8;
+    }
+
+    @media (max-width: 680px) {
+      .phase-steps { flex-direction: column; }
+      .phase-step { border-right: 1px solid var(--border); border-bottom: none; }
+      .phase-step:last-child { border-bottom: 1px solid var(--border); }
+    }
+
+    /* ═══════════════════════════════════════
+       CONTACT
+    ═══════════════════════════════════════ */
+    #contact { background: var(--bg1); border-bottom: 1px solid var(--border); }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.35fr;
+      gap: 5rem;
+      align-items: start;
+    }
+    .contact-info p {
+      font-size: 0.95rem;
+      color: var(--muted);
+      line-height: 1.75;
+      font-weight: 300;
+      margin-bottom: 1.75rem;
+    }
+    .clearance-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.6rem 1rem;
+      border: 1px solid rgba(34,197,94,0.3);
+      background: rgba(34,197,94,0.06);
+      border-radius: 2px;
+    }
+    .clearance-badge-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: blink-green 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes blink-green {
+      0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+      50%      { opacity:0.6; box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+    }
+    .clearance-badge span {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--green);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .contact-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .form-group label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .form-group input,
+    .form-group textarea {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'Barlow', sans-serif;
+      font-size: 0.9rem;
+      padding: 0.7rem 1rem;
+      border-radius: 2px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      resize: vertical;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(0,212,255,0.1);
+    }
+    .form-group textarea { min-height: 130px; }
+    .form-submit { display: flex; justify-content: flex-end; }
+
+    /* ═══════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════ */
+    footer {
+      padding: 1.75rem 0;
+      background: var(--bg0);
+      border-top: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+    }
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .footer-copy {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+    .footer-copy a { color: var(--accent); text-decoration: none; }
+    .footer-links { display: flex; gap: 1.75rem; }
+    .footer-links a {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--accent); }
+
+    /* ═══════════════════════════════════════
+       PROJECTS
+    ═══════════════════════════════════════ */
+    #projects { background: var(--bg0); border-bottom: 1px solid var(--border); }
+
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 3rem;
+    }
+    .project-card {
+      background: var(--bg1);
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      border-left: 3px solid transparent;
+      transition: background 0.2s, border-color 0.3s;
+    }
+    .project-card:hover {
+      background: var(--bg2);
+      border-left-color: var(--accent);
+    }
+    .project-card-num {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--accent);
+      letter-spacing: 0.14em;
+      opacity: 0.6;
+    }
+    .project-card-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .project-card-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.7;
+      font-weight: 300;
+      flex: 1;
+    }
+    .project-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--border);
+    }
+    .stack-pill {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.6rem;
+      padding: 0.22rem 0.55rem;
+      background: rgba(0,212,255,0.06);
+      border: 1px solid rgba(0,212,255,0.15);
+      color: var(--accent);
+      border-radius: 2px;
+      letter-spacing: 0.06em;
+    }
+
+    /* ═══════════════════════════════════════
+       CERTS
+    ═══════════════════════════════════════ */
+    #certs { background: var(--bg1); border-bottom: 1px solid var(--border); }
+
+    .certs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 3rem;
+    }
+    .cert-item {
+      background: var(--bg2);
+      padding: 1.35rem 1.5rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      transition: background 0.2s;
+    }
+    .cert-item:hover { background: #152035; }
+    .cert-icon {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      padding: 0.3rem 0.45rem;
+      border: 1px solid var(--border-mid);
+      border-radius: 2px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .cert-icon.gold { color: var(--gold); border-color: rgba(240,180,41,0.3); }
+    .cert-body {}
+    .cert-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .cert-issuer {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      margin-top: 0.2rem;
+    }
+
+    /* ═══════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════ */
+    @media (max-width: 900px) {
+      .about-grid { grid-template-columns: 1fr !important; gap: 2.5rem !important; }
+      .contact-grid { grid-template-columns: 1fr !important; gap: 3rem !important; }
+      .tl-item { grid-template-columns: 110px 1fr; gap: 1.25rem; }
+    }
+    @media (max-width: 680px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .stat-item:nth-child(2) { border-right: none; }
+      .stat-item:nth-child(3) { border-top: 1px solid var(--border); border-right: 1px solid var(--border); }
+      .stat-item:nth-child(4) { border-top: 1px solid var(--border); border-right: none; }
+.tl-item { grid-template-columns: 1fr; gap: 0.5rem; }
+      .tl-meta { padding-bottom: 0; }
+      .form-row { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+      .skills-grid { grid-template-columns: 1fr !important; }
+    }
+    @media (max-width: 480px) {
+      .hero-ctas { flex-direction: column; }
+      .btn { justify-content: center; }
+      .footer-inner { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════
+       NAVBAR
+  ══════════════════════════════════════ -->
+  <nav id="navbar">
+    <div class="container nav-inner">
+      <a href="#hero" class="nav-logo">LATEEF<span>.</span></a>
+      <ul class="nav-links">
+        <li><a href="#about">About</a></li>
+        <li><a href="#skills">Skills</a></li>
+        <li><a href="#experience">Experience</a></li>
+        <li><a href="#writing">Writing</a></li>
+        <li><a href="lab/index.html">Lab</a></li>
+        <li><a href="#projects">Projects</a></li>
+        <li><a href="#certs">Certs</a></li>
+        <li><a href="#learning">Learning</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+      <div class="nav-hamburger-wrap">
+        <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#about"      class="mobile-link">About</a>
+    <a href="#skills"     class="mobile-link">Skills</a>
+    <a href="#experience" class="mobile-link">Experience</a>
+    <a href="#writing"    class="mobile-link">Writing</a>
+    <a href="lab/index.html" class="mobile-link">Lab</a>
+    <a href="#projects"   class="mobile-link">Projects</a>
+    <a href="#certs"      class="mobile-link">Certs</a>
+    <a href="#learning"   class="mobile-link">Learning</a>
+    <a href="#contact"    class="mobile-link">Contact</a>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       HERO
+  ══════════════════════════════════════ -->
+  <section id="hero">
+    <svg id="hero-topo"
+         viewBox="0 0 640 600"
+         xmlns="http://www.w3.org/2000/svg"
+         aria-hidden="true"
+         role="presentation">
+
+      <defs>
+        <!-- Fade uses exact site bg color (#080d1a) — eliminates the color seam.
+             Covers left 65% of the SVG so topology only shows far right. -->
+        <linearGradient id="topo-fade" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"   stop-color="#080d1a" stop-opacity="1"/>
+          <stop offset="65%"  stop-color="#080d1a" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="topo-node-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stop-color="#00d4ff" stop-opacity="0.22"/>
+          <stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <!-- Core ring connections -->
+      <line x1="320" y1="100" x2="480" y2="200" stroke="#00d4ff" stroke-width="0.6" opacity="0.18"/>
+      <line x1="480" y1="200" x2="500" y2="370" stroke="#00d4ff" stroke-width="0.6" opacity="0.18"/>
+      <line x1="500" y1="370" x2="340" y2="440" stroke="#00d4ff" stroke-width="0.6" opacity="0.14"/>
+      <line x1="340" y1="440" x2="180" y2="360" stroke="#00d4ff" stroke-width="0.6" opacity="0.14"/>
+      <line x1="180" y1="360" x2="200" y2="190" stroke="#00d4ff" stroke-width="0.6" opacity="0.18"/>
+      <line x1="200" y1="190" x2="320" y2="100" stroke="#00d4ff" stroke-width="0.6" opacity="0.18"/>
+
+      <!-- Cross-connections -->
+      <line x1="320" y1="100" x2="500" y2="370" stroke="#00d4ff" stroke-width="0.35" opacity="0.08"/>
+      <line x1="480" y1="200" x2="180" y2="360" stroke="#00d4ff" stroke-width="0.35" opacity="0.08"/>
+      <line x1="480" y1="200" x2="340" y2="440" stroke="#00d4ff" stroke-width="0.35" opacity="0.06"/>
+      <line x1="200" y1="190" x2="500" y2="370" stroke="#00d4ff" stroke-width="0.35" opacity="0.06"/>
+      <line x1="320" y1="100" x2="180" y2="360" stroke="#00d4ff" stroke-width="0.35" opacity="0.05"/>
+      <line x1="200" y1="190" x2="340" y2="440" stroke="#00d4ff" stroke-width="0.35" opacity="0.05"/>
+
+      <!-- Spoke lines to outer nodes -->
+      <line x1="320" y1="100" x2="355" y2="38"  stroke="#00d4ff" stroke-width="0.45" opacity="0.14"/>
+      <line x1="480" y1="200" x2="578" y2="148" stroke="#00d4ff" stroke-width="0.45" opacity="0.14"/>
+      <line x1="480" y1="200" x2="598" y2="248" stroke="#00d4ff" stroke-width="0.45" opacity="0.14"/>
+      <line x1="500" y1="370" x2="608" y2="390" stroke="#00d4ff" stroke-width="0.45" opacity="0.13"/>
+      <line x1="500" y1="370" x2="558" y2="460" stroke="#00d4ff" stroke-width="0.45" opacity="0.10"/>
+      <line x1="340" y1="440" x2="375" y2="488" stroke="#00d4ff" stroke-width="0.45" opacity="0.10"/>
+      <line x1="180" y1="360" x2="118" y2="412" stroke="#00d4ff" stroke-width="0.45" opacity="0.11"/>
+      <line x1="200" y1="190" x2="138" y2="128" stroke="#00d4ff" stroke-width="0.45" opacity="0.14"/>
+      <line x1="200" y1="190" x2="122" y2="215" stroke="#00d4ff" stroke-width="0.45" opacity="0.11"/>
+
+      <!-- Outer mesh lines -->
+      <line x1="355" y1="38"  x2="578" y2="148" stroke="#00d4ff" stroke-width="0.3" opacity="0.05"/>
+      <line x1="578" y1="148" x2="598" y2="248" stroke="#00d4ff" stroke-width="0.3" opacity="0.08"/>
+      <line x1="598" y1="248" x2="608" y2="390" stroke="#00d4ff" stroke-width="0.3" opacity="0.08"/>
+      <line x1="138" y1="128" x2="355" y2="38"  stroke="#00d4ff" stroke-width="0.3" opacity="0.05"/>
+      <line x1="118" y1="412" x2="375" y2="488" stroke="#00d4ff" stroke-width="0.3" opacity="0.04"/>
+
+      <!-- NODE 1: CORE -->
+      <circle cx="320" cy="100" r="20" fill="url(#topo-node-glow)" opacity="0.55" style="animation: halo-pulse 3s ease-in-out infinite;"/>
+      <circle cx="320" cy="100" r="7"  fill="#080d1a" stroke="#00d4ff" stroke-width="1.4" opacity="0.80"/>
+      <circle cx="320" cy="100" r="3"  fill="#00d4ff" opacity="0.80" style="animation: node-pulse 3s ease-in-out infinite;"/>
+      <text x="320" y="84" text-anchor="middle" font-family="IBM Plex Mono, Courier New, monospace" font-size="8.5" font-weight="500" fill="#00d4ff" opacity="0.55" letter-spacing="0.12em">CORE</text>
+
+      <!-- NODE 2: CLOUD -->
+      <circle cx="480" cy="200" r="16" fill="url(#topo-node-glow)" opacity="0.45" style="animation: halo-pulse 3.4s ease-in-out infinite 0.4s;"/>
+      <circle cx="480" cy="200" r="6"  fill="#080d1a" stroke="#00d4ff" stroke-width="1.1" opacity="0.72"/>
+      <circle cx="480" cy="200" r="2.5" fill="#00d4ff" opacity="0.72"/>
+      <text x="493" y="196" text-anchor="start" font-family="IBM Plex Mono, Courier New, monospace" font-size="7.5" font-weight="500" fill="#00d4ff" opacity="0.45" letter-spacing="0.1em">CLOUD</text>
+
+      <!-- NODE 3: WAN -->
+      <circle cx="500" cy="370" r="16" fill="url(#topo-node-glow)" opacity="0.45" style="animation: halo-pulse 2.8s ease-in-out infinite 0.8s;"/>
+      <circle cx="500" cy="370" r="6"  fill="#080d1a" stroke="#00d4ff" stroke-width="1.1" opacity="0.72"/>
+      <circle cx="500" cy="370" r="2.5" fill="#00d4ff" opacity="0.72"/>
+      <text x="513" y="366" text-anchor="start" font-family="IBM Plex Mono, Courier New, monospace" font-size="7.5" font-weight="500" fill="#00d4ff" opacity="0.45" letter-spacing="0.1em">WAN</text>
+
+      <!-- NODE 4: SP -->
+      <circle cx="340" cy="440" r="14" fill="url(#topo-node-glow)" opacity="0.35" style="animation: halo-pulse 3.6s ease-in-out infinite 1.2s;"/>
+      <circle cx="340" cy="440" r="5.5" fill="#080d1a" stroke="#00d4ff" stroke-width="1.0" opacity="0.65"/>
+      <circle cx="340" cy="440" r="2.2" fill="#00d4ff" opacity="0.65"/>
+      <text x="340" y="457" text-anchor="middle" font-family="IBM Plex Mono, Courier New, monospace" font-size="7.5" font-weight="500" fill="#00d4ff" opacity="0.40" letter-spacing="0.1em">SP</text>
+
+      <!-- NODE 5: SEC -->
+      <circle cx="180" cy="360" r="14" fill="url(#topo-node-glow)" opacity="0.35" style="animation: halo-pulse 3.2s ease-in-out infinite 1.6s;"/>
+      <circle cx="180" cy="360" r="5.5" fill="#080d1a" stroke="#00d4ff" stroke-width="1.0" opacity="0.65"/>
+      <circle cx="180" cy="360" r="2.2" fill="#00d4ff" opacity="0.65"/>
+      <text x="162" y="356" text-anchor="end" font-family="IBM Plex Mono, Courier New, monospace" font-size="7.5" font-weight="500" fill="#00d4ff" opacity="0.40" letter-spacing="0.1em">SEC</text>
+
+      <!-- NODE 6: DC -->
+      <circle cx="200" cy="190" r="16" fill="url(#topo-node-glow)" opacity="0.45" style="animation: halo-pulse 2.6s ease-in-out infinite 2s;"/>
+      <circle cx="200" cy="190" r="6"  fill="#080d1a" stroke="#00d4ff" stroke-width="1.1" opacity="0.72"/>
+      <circle cx="200" cy="190" r="2.5" fill="#00d4ff" opacity="0.72"/>
+      <text x="186" y="186" text-anchor="end" font-family="IBM Plex Mono, Courier New, monospace" font-size="7.5" font-weight="500" fill="#00d4ff" opacity="0.45" letter-spacing="0.1em">DC</text>
+
+      <!-- Outer/spoke nodes -->
+      <circle cx="355" cy="38"  r="4" fill="#080d1a" stroke="#00d4ff" stroke-width="0.8" opacity="0.40"/>
+      <circle cx="355" cy="38"  r="1.6" fill="#00d4ff" opacity="0.40"/>
+      <circle cx="578" cy="148" r="4" fill="#080d1a" stroke="#00d4ff" stroke-width="0.8" opacity="0.40"/>
+      <circle cx="578" cy="148" r="1.6" fill="#00d4ff" opacity="0.40"/>
+      <circle cx="598" cy="248" r="4" fill="#080d1a" stroke="#00d4ff" stroke-width="0.8" opacity="0.40"/>
+      <circle cx="598" cy="248" r="1.6" fill="#00d4ff" opacity="0.40"/>
+      <circle cx="608" cy="390" r="3.5" fill="#080d1a" stroke="#00d4ff" stroke-width="0.8" opacity="0.34"/>
+      <circle cx="608" cy="390" r="1.5" fill="#00d4ff" opacity="0.34"/>
+      <circle cx="558" cy="460" r="3"  fill="#080d1a" stroke="#00d4ff" stroke-width="0.7" opacity="0.27"/>
+      <circle cx="558" cy="460" r="1.3" fill="#00d4ff" opacity="0.27"/>
+      <circle cx="375" cy="488" r="3"  fill="#080d1a" stroke="#00d4ff" stroke-width="0.7" opacity="0.22"/>
+      <circle cx="375" cy="488" r="1.3" fill="#00d4ff" opacity="0.22"/>
+      <circle cx="118" cy="412" r="3"  fill="#080d1a" stroke="#00d4ff" stroke-width="0.7" opacity="0.27"/>
+      <circle cx="118" cy="412" r="1.3" fill="#00d4ff" opacity="0.27"/>
+      <circle cx="138" cy="128" r="3"  fill="#080d1a" stroke="#00d4ff" stroke-width="0.7" opacity="0.32"/>
+      <circle cx="138" cy="128" r="1.3" fill="#00d4ff" opacity="0.32"/>
+      <circle cx="122" cy="215" r="3"  fill="#080d1a" stroke="#00d4ff" stroke-width="0.7" opacity="0.27"/>
+      <circle cx="122" cy="215" r="1.3" fill="#00d4ff" opacity="0.27"/>
+
+      <!-- Left fade overlay — exact bg color, covers 65% of SVG width -->
+      <rect x="0" y="0" width="640" height="600" fill="url(#topo-fade)"/>
+    </svg>
+
+    <div id="scanline"></div>
+    <div class="container hero-inner">
+      <p class="hero-label reveal">Enterprise Network Architect · Cloud Infrastructure Engineer · AI-Driven Automation</p>
+
+      <h1 class="hero-name reveal" style="transition-delay:0.08s">
+        LATEEF<br><span class="accent">LAW</span>
+      </h1>
+
+      <p class="hero-typewriter reveal" style="transition-delay:0.16s" id="typewriter">
+        <span id="tw-text"></span><span class="cursor"></span>
+      </p>
+
+      <div class="hero-badges reveal" style="transition-delay:0.22s">
+        <span class="badge badge-blue"><span class="badge-dot"></span>CCIE Enterprise</span>
+        <span class="badge badge-blue"><span class="badge-dot"></span>CCIE Service Provider</span>
+        <span class="badge badge-green"><span class="badge-dot"></span>TS Clearance Active</span>
+        <span class="badge badge-gold"><span class="badge-dot"></span>BEYA 2023</span>
+      </div>
+
+      <p class="hero-tagline reveal" style="transition-delay:0.28s">
+        Dual CCIE-certified Network Architect and Cloud Infrastructure Engineer with 15+ years
+        designing mission-critical networks for the Department of Defense. Currently serving as
+        Enterprise Architect at General Dynamics — supporting 40,000+ users across the Defense
+        Logistics Agency's global WAN. Operating at the intersection of complex routing
+        architecture, multi-cloud infrastructure, and the future of network automation.
+      </p>
+
+      <div class="hero-ctas reveal" style="transition-delay:0.35s">
+        <a href="#experience" class="btn btn-primary">View Experience</a>
+        <a href="#contact"    class="btn btn-outline">Get In Touch</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       STATS BAR
+  ══════════════════════════════════════ -->
+  <div id="stats">
+    <div class="stats-grid">
+      <div class="stat-item reveal">
+        <div class="stat-value" data-target="15" data-suffix="+">0</div>
+        <div class="stat-label">Years Experience</div>
+      </div>
+      <div class="stat-item reveal" style="transition-delay:0.07s">
+        <div class="stat-value" data-target="2" data-prefix="" data-suffix="×">0</div>
+        <div class="stat-label">CCIE Certified</div>
+      </div>
+      <div class="stat-item reveal" style="transition-delay:0.14s">
+        <div class="stat-value" data-target="40" data-suffix="K+">0</div>
+        <div class="stat-label">Users Supported</div>
+      </div>
+      <div class="stat-item reveal" style="transition-delay:0.21s">
+        <div class="stat-value mono">TS</div>
+        <div class="stat-label">Clearance Active</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       ABOUT
+  ══════════════════════════════════════ -->
+  <section id="about">
+    <div class="container">
+      <div class="about-grid">
+
+        <div class="reveal-left">
+          <p class="section-tag">// 01 — About</p>
+          <h2 class="section-heading">Who<br>I Am</h2>
+
+          <div class="about-stats-mini">
+            <div class="about-stat">
+              <div class="about-stat-val">B.B.A.</div>
+              <div class="about-stat-lbl">Baruch College</div>
+            </div>
+            <div class="about-stat">
+              <div class="about-stat-val">M.S.</div>
+              <div class="about-stat-lbl">Info Technology</div>
+            </div>
+            <div class="about-stat">
+              <div class="about-stat-val">USMC</div>
+              <div class="about-stat-lbl">Veteran</div>
+            </div>
+            <div class="about-stat">
+              <div class="about-stat-val">TS</div>
+              <div class="about-stat-lbl">Clearance</div>
+            </div>
+          </div>
+
+          <div class="about-tags">
+            <span class="about-tag">Honorable Discharge</span>
+            <span class="about-tag">BEYA 2023</span>
+            <span class="about-tag">DoD Infrastructure</span>
+          </div>
+        </div>
+
+        <div class="reveal-right" style="transition-delay:0.1s">
+          <div class="about-bio">
+            <p><strong>Dual CCIE-certified Network Architect</strong> and Cloud Infrastructure Engineer with <strong>15+ years</strong>
+            of progressive experience in enterprise networking, cloud architecture, and DoD
+            infrastructure.</p>
+
+            <p>I currently serve as Enterprise Architect and Cloud Network Engineer at <strong>General Dynamics
+            Information Technology</strong>, supporting the Defense Logistics Agency's global WAN —
+            <strong>40,000+ users</strong> across <strong>CONUS and OCONUS</strong>. I operate at the intersection of complex routing
+            architecture, multi-cloud infrastructure, and DoD compliance — environments where downtime
+            isn't measured in dollars, it's measured in operational readiness.</p>
+
+            <p>Beyond production infrastructure, I build at the edge of where networking meets automation
+            and AI — Ansible-driven configuration pipelines, PowerShell STIG automation deployed in
+            production at DLA, and AI-assisted workflow systems built on pgvector, Python, and
+            multi-agent architectures. I'm not chasing trends — I'm applying modern tooling to real
+            operational problems.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       SKILLS
+  ══════════════════════════════════════ -->
+  <section id="skills">
+    <div class="container">
+      <p class="section-tag reveal">// 02 — Specializations</p>
+      <h2 class="section-heading reveal" style="transition-delay:0.06s">Technical<br>Expertise</h2>
+
+      <div class="skills-grid">
+
+        <div class="skill-card reveal">
+          <div class="skill-card-inner">
+            <p class="skill-card-num">01 / ENTERPRISE NETWORKING</p>
+            <p class="skill-card-title">Routing &amp; WAN</p>
+            <div class="tag-pills">
+              <span class="pill">BGP/MP-BGP</span><span class="pill">OSPF</span><span class="pill">IS-IS</span>
+              <span class="pill">EIGRP</span><span class="pill">MPLS</span><span class="pill">DMVPN</span>
+              <span class="pill">SD-WAN</span><span class="pill">GRE</span><span class="pill">PBR</span>
+              <span class="pill">Traffic Engineering</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="skill-card reveal" style="transition-delay:0.07s">
+          <div class="skill-card-inner">
+            <p class="skill-card-num">02 / CLOUD ARCHITECTURE</p>
+            <p class="skill-card-title">Multi-Cloud &amp; Hybrid</p>
+            <div class="tag-pills">
+              <span class="pill">Azure</span><span class="pill">AWS</span><span class="pill">GCP</span>
+              <span class="pill">OCI</span><span class="pill">Aviatrix</span><span class="pill">vNets/VPCs</span>
+              <span class="pill">ExpressRoute</span><span class="pill">Multi-Cloud Design</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="skill-card reveal" style="transition-delay:0.14s">
+          <div class="skill-card-inner">
+            <p class="skill-card-num">03 / DATA CENTER</p>
+            <p class="skill-card-title">Fabric &amp; Virtualization</p>
+            <div class="tag-pills">
+              <span class="pill">Cisco ACI</span><span class="pill">APIC</span>
+              <span class="pill">VMware vSphere</span><span class="pill">EVPN</span>
+              <span class="pill">VPLS</span><span class="pill">L2TPv3</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="skill-card reveal" style="transition-delay:0.07s">
+          <div class="skill-card-inner">
+            <p class="skill-card-num">04 / SECURITY</p>
+            <p class="skill-card-title">DoD &amp; Compliance</p>
+            <div class="tag-pills">
+              <span class="pill">STIG Compliance</span><span class="pill">IPSec/IKEv2</span>
+              <span class="pill">Check Point FW</span><span class="pill">DoD PKI</span>
+              <span class="pill">CASP+</span><span class="pill">CAP</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="skill-card reveal" style="transition-delay:0.14s">
+          <div class="skill-card-inner">
+            <p class="skill-card-num">05 / SERVICE PROVIDER</p>
+            <p class="skill-card-title">Carrier &amp; Core</p>
+            <div class="tag-pills">
+              <span class="pill">MPLS L3VPN</span><span class="pill">VPLS</span>
+              <span class="pill">L2TPv3</span><span class="pill">RSVP-TE</span>
+              <span class="pill">CSC</span><span class="pill">eBGP/iBGP</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="skill-card reveal" style="transition-delay:0.21s">
+          <div class="skill-card-inner">
+            <p class="skill-card-num">06 / CERTIFICATIONS</p>
+            <p class="skill-card-title">Credentials</p>
+            <div class="tag-pills">
+              <span class="pill">CCIE Enterprise</span><span class="pill">CCIE SP</span>
+              <span class="pill">Azure Admin</span><span class="pill">Azure Net Eng</span>
+              <span class="pill">OCI Foundations</span><span class="pill">CCSA</span>
+              <span class="pill">CASP+</span><span class="pill">CAP</span><span class="pill">Network+</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       EXPERIENCE
+  ══════════════════════════════════════ -->
+  <section id="experience">
+    <div class="container">
+      <p class="section-tag reveal">// 03 — Experience</p>
+      <h2 class="section-heading reveal" style="transition-delay:0.06s">Career<br>History</h2>
+
+      <div class="award-callout reveal" style="transition-delay:0.12s; margin-top:2rem;">
+        <span class="award-icon">★</span>
+        <p>BEYA 2023 Modern-Day Technology Leader Award — Black Engineer of the Year Awards</p>
+      </div>
+
+      <div class="timeline">
+
+        <div class="tl-item reveal">
+          <div class="tl-meta">
+            <div class="tl-dates">Dec 2018<br>— Present</div>
+            <div class="tl-dot"></div>
+          </div>
+          <div class="tl-content">
+            <p class="tl-title">Cloud Network Engineer / Enterprise Architect</p>
+            <p class="tl-company">General Dynamics Information Technology</p>
+            <p class="tl-location">Defense Logistics Agency (DLA) — CONUS/OCONUS</p>
+            <p class="tl-desc">Designing and maintaining multi-cloud infrastructure (Azure, AWS, OCI, GCP) for 40,000+ DLA users across CONUS and OCONUS. Led circuit modernization initiatives resulting in significant annual cost savings through 46 circuit transitions while improving logical traffic routing across the global WAN. Architected L3VPN-based security zone separation supporting firewall consolidation — eliminating the need for additional physical infrastructure across remote sites. Identified critical design flaws in a proposed multi-cloud SD-WAN architecture (Aviatrix), engineered a workaround solution, and kept a major DoD cloud migration on schedule while generating substantial projected savings. Orchestrated router refresh across 185 CONUS/OCONUS sites (216 devices). Tier III/IV troubleshooting of MP-BGP, OSPF, DMVPN, MPLS, and IPSec architectures. STIG-compliant network change management and SD-WAN/DoD PKI modernization.</p>
+          </div>
+        </div>
+
+        <div class="tl-item reveal" style="transition-delay:0.06s">
+          <div class="tl-meta">
+            <div class="tl-dates">Aug 2018<br>— Dec 2018</div>
+            <div class="tl-dot"></div>
+          </div>
+          <div class="tl-content">
+            <p class="tl-title">Senior Systems Engineer</p>
+            <p class="tl-company">NES Associates</p>
+            <p class="tl-desc">Design, analysis, and evaluation of large complex network-centric systems for DLA ETN WAN infrastructure.</p>
+          </div>
+        </div>
+
+        <div class="tl-item reveal" style="transition-delay:0.09s">
+          <div class="tl-meta">
+            <div class="tl-dates">Jul 2013<br>— Jul 2018</div>
+            <div class="tl-dot"></div>
+          </div>
+          <div class="tl-content">
+            <p class="tl-title">Senior Network Engineer</p>
+            <p class="tl-company">Phoenix House Foundation</p>
+            <p class="tl-desc">Led WAN migration across 43 locations, delivering $480,000 in annual savings. Managed LAN/WAN design, wireless networks, VPN/firewall security, and Cisco ASA upgrades.</p>
+          </div>
+        </div>
+
+        <div class="tl-item reveal" style="transition-delay:0.12s">
+          <div class="tl-meta">
+            <div class="tl-dates">Feb 2012<br>— Jul 2013</div>
+            <div class="tl-dot"></div>
+          </div>
+          <div class="tl-content">
+            <p class="tl-title">Field Network Engineer</p>
+            <p class="tl-company">GOS Technical Services</p>
+            <p class="tl-desc">Enterprise network support across Cisco router/switch platforms. Data Center work for the Dept. of Energy. Cisco VoIP deployment.</p>
+          </div>
+        </div>
+
+        <div class="tl-item reveal" style="transition-delay:0.15s">
+          <div class="tl-meta">
+            <div class="tl-dates">Jun 2011<br>— Mar 2012</div>
+            <div class="tl-dot"></div>
+          </div>
+          <div class="tl-content">
+            <p class="tl-title">Network Administrator / Consultant</p>
+            <p class="tl-company">Tate LLC</p>
+          </div>
+        </div>
+
+        <div class="tl-item reveal" style="transition-delay:0.18s">
+          <div class="tl-meta">
+            <div class="tl-dates">Jan 2005<br>— Dec 2009</div>
+            <div class="tl-dot"></div>
+          </div>
+          <div class="tl-content">
+            <p class="tl-title">Field Technician</p>
+            <p class="tl-company">Verizon Communications Inc.</p>
+            <p class="tl-desc">FiOS FTTP rollout. Copper and fiber installation, repair, and troubleshooting.</p>
+          </div>
+        </div>
+
+        <div class="tl-item reveal" style="transition-delay:0.21s">
+          <div class="tl-meta">
+            <div class="tl-dates">— 2001<br>Hon. Discharge</div>
+            <div class="tl-dot"></div>
+          </div>
+          <div class="tl-content">
+            <p class="tl-title">Communications Center Operator</p>
+            <p class="tl-company">United States Marine Corps</p>
+            <p class="tl-desc">MOS 2542. TCP/IP field station setup, message transmission, and communications operations in the Fleet Marine Force.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       WRITING
+  ══════════════════════════════════════ -->
+  <section id="writing">
+    <div class="container">
+      <p class="section-tag reveal">// 04 — Writing</p>
+      <h2 class="section-heading reveal" style="transition-delay:0.06s">Articles &amp;<br>Research</h2>
+
+      <div class="writing-grid">
+
+        <div class="article-card reveal" style="transition-delay:0.1s">
+          <p class="article-card-category">Cloud Networking · Security</p>
+          <p class="article-card-title">IPSec Over High-Bandwidth Cloud Interconnects: The Throughput Problem No One Talks About</p>
+          <p class="article-card-desc">When security requirements mandate IPSec but a single cloud-native tunnel can't saturate a 100G interconnect, you need a real design strategy. A deep-dive into ECMP flow pinning, MACsec tradeoffs, and the backbone encryption gap the providers don't advertise.</p>
+          <div class="article-card-footer">
+            <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+              <span class="stack-pill">IPSec</span>
+              <span class="stack-pill">MACsec</span>
+              <span class="stack-pill">ECMP</span>
+              <span class="stack-pill">Cloud Interconnect</span>
+              <span class="stack-pill">Network Architecture</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:1.5rem;flex-shrink:0;">
+              <span class="article-card-date">March 2026</span>
+              <a href="articles/ipsec-cloud-interconnect.html" class="article-link">Read Article →</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="article-card reveal" style="transition-delay:0.15s">
+          <p class="article-card-category">Network Automation · Lab Guide</p>
+          <p class="article-card-title">Network Automation Lab Guide — From Manual CLI to Intent-Driven Automation</p>
+          <p class="article-card-desc">A complete 13-lab walkthrough built around a 7-level automation maturity model. EVE-NG, Ansible, NetBox, Jinja2 templates, CI/CD pipelines, and drift detection — with full working code at every level.</p>
+          <div class="article-card-footer">
+            <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+              <span class="stack-pill">Ansible</span>
+              <span class="stack-pill">NetBox</span>
+              <span class="stack-pill">EVE-NG</span>
+              <span class="stack-pill">Python</span>
+              <span class="stack-pill">CI/CD</span>
+              <span class="stack-pill">Intent-Based Networking</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:1.5rem;flex-shrink:0;">
+              <span class="article-card-date">April 2026</span>
+              <a href="lab/index.html" class="article-link">View Lab Guide →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- FUTURE ARTICLES: Insert additional article cards here following the same pattern -->
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       PROJECTS
+  ══════════════════════════════════════ -->
+  <section id="projects">
+    <div class="container">
+      <p class="section-tag reveal">// 05 — Projects</p>
+      <h2 class="section-heading reveal" style="transition-delay:0.06s">Lab &amp;<br>Builds</h2>
+
+      <div class="projects-grid">
+
+        <div class="project-card reveal">
+          <p class="project-card-num">01 / NETWORK LAB</p>
+          <p class="project-card-title">EVE-NG Network Automation Lab</p>
+          <p class="project-card-desc">Advanced simulation environment replicating DoD network infrastructure with Cisco ISE, Active Directory/DNS, Ansible control node, RADIUS/NTP server, and Cisco routing/switching devices. Developed for validating Ansible playbooks, TACACS+ authentication workflows, and routing configurations before DLA production deployment.</p>
+          <div class="project-stack">
+            <span class="stack-pill">EVE-NG</span>
+            <span class="stack-pill">Ansible</span>
+            <span class="stack-pill">ISE/TACACS+</span>
+            <span class="stack-pill">Cisco IOS</span>
+          </div>
+        </div>
+
+        <div class="project-card reveal" style="transition-delay:0.07s">
+          <p class="project-card-num">02 / AI / ML</p>
+          <p class="project-card-title">AI Second Brain (PostgreSQL / pgvector)</p>
+          <p class="project-card-desc">Personal AI assistant leveraging PostgreSQL with pgvector (Supabase), Voyage AI embeddings, and custom MCP server integrated with Claude Desktop. Supports semantic memory retrieval, multi-calendar management, project tracking, and workflow automation. Secondary retrieval pipeline built on ChromaDB and OpenAI embeddings.</p>
+          <div class="project-stack">
+            <span class="stack-pill">PostgreSQL/pgvector</span>
+            <span class="stack-pill">Python</span>
+            <span class="stack-pill">Supabase</span>
+            <span class="stack-pill">Voyage AI</span>
+            <span class="stack-pill">MCP Server</span>
+          </div>
+        </div>
+
+        <div class="project-card reveal" style="transition-delay:0.14s">
+          <p class="project-card-num">03 / AI / AUTOMATION</p>
+          <p class="project-card-title">Multi-Agent AI Operating System</p>
+          <p class="project-card-desc">Modular multi-agent system built on Obsidian knowledge vault with specialized agents for email triage, calendar management, and workflow automation. Flask dashboard in development for orchestration and control. Applies LLM and API integration skills relevant to DevSecOps toolchain development.</p>
+          <div class="project-stack">
+            <span class="stack-pill">Python</span>
+            <span class="stack-pill">Flask</span>
+            <span class="stack-pill">Obsidian/RAG</span>
+            <span class="stack-pill">Multi-Agent Architecture</span>
+          </div>
+        </div>
+
+        <div class="project-card reveal" style="transition-delay:0.07s">
+          <p class="project-card-num">04 / DOD / COMPLIANCE</p>
+          <p class="project-card-title">STIG PowerShell Automation Engine</p>
+          <p class="project-card-desc">PowerShell pipeline parsing and evaluating 100+ DoD STIG CKL (Checklist) files, generating compliance reports. Deployed in production at DLA, significantly reducing manual audit time and improving security compliance deliverable accuracy.</p>
+          <div class="project-stack">
+            <span class="stack-pill">PowerShell</span>
+            <span class="stack-pill">DISA STIG CKL Parsing</span>
+            <span class="stack-pill">DoD Compliance</span>
+          </div>
+        </div>
+
+        <div class="project-card reveal" style="transition-delay:0.14s">
+          <p class="project-card-num">05 / WEB / MULTI-CLIENT</p>
+          <p class="project-card-title">Custom Web Builds — Multi-Client</p>
+          <p class="project-card-desc"><strong style="color:var(--text);font-weight:600">PepTek LLC</strong> — Research-grade peptide e-commerce on Shopify with custom theme, age verification, legal disclaimers, and Bankful payment integration.<br><br><strong style="color:var(--text);font-weight:600">JBExclusive Studios</strong> — Barbershop booking platform with appointment scheduling and service catalog on WIX with custom CSS.<br><br><strong style="color:var(--text);font-weight:600">Divine Assisted Care LLC</strong> — In-home mental health nursing site with intake forms, HIPAA-conscious data collection, and full hosting management.</p>
+          <div class="project-stack">
+            <span class="stack-pill">Shopify/Liquid</span>
+            <span class="stack-pill">API Integration</span>
+            <span class="stack-pill">Payment Systems</span>
+            <span class="stack-pill">WIX</span>
+            <span class="stack-pill">DNS/Hosting</span>
+          </div>
+        </div>
+
+        <div class="project-card reveal" style="transition-delay:0.21s">
+          <p class="project-card-num">06 / NETWORK / AUTOMATION</p>
+          <p class="project-card-title">Python Network Automation Framework</p>
+          <p class="project-card-desc">Network automation scripts and tools integrating with Ansible and REST APIs for enterprise device management, compliance checks, and configuration auditing. Combines network engineering expertise with modern scripting for enterprise-scale workflows.</p>
+          <div class="project-stack">
+            <span class="stack-pill">Python</span>
+            <span class="stack-pill">Ansible</span>
+            <span class="stack-pill">REST APIs</span>
+            <span class="stack-pill">Netmiko</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       CERTS
+  ══════════════════════════════════════ -->
+  <section id="certs">
+    <div class="container">
+      <p class="section-tag reveal">// 06 — Certifications</p>
+      <h2 class="section-heading reveal" style="transition-delay:0.06s">Credentials<br>&amp; Certs</h2>
+
+      <div class="certs-grid">
+
+        <div class="cert-item reveal">
+          <span class="cert-icon gold">CCIE</span>
+          <div class="cert-body">
+            <p class="cert-name">CCIE Enterprise Infrastructure</p>
+            <p class="cert-issuer">Cisco Systems</p>
+          </div>
+        </div>
+
+        <div class="cert-item reveal" style="transition-delay:0.05s">
+          <span class="cert-icon gold">CCIE</span>
+          <div class="cert-body">
+            <p class="cert-name">CCIE Service Provider</p>
+            <p class="cert-issuer">Cisco Systems</p>
+          </div>
+        </div>
+
+        <div class="cert-item reveal" style="transition-delay:0.1s">
+          <span class="cert-icon">AZ-104</span>
+          <div class="cert-body">
+            <p class="cert-name">Azure Administrator Associate</p>
+            <p class="cert-issuer">Microsoft</p>
+          </div>
+        </div>
+
+        <div class="cert-item reveal" style="transition-delay:0.15s">
+          <span class="cert-icon">AZ-700</span>
+          <div class="cert-body">
+            <p class="cert-name">Azure Network Engineer Associate</p>
+            <p class="cert-issuer">Microsoft</p>
+          </div>
+        </div>
+
+        <div class="cert-item reveal" style="transition-delay:0.05s">
+          <span class="cert-icon">OCI</span>
+          <div class="cert-body">
+            <p class="cert-name">OCI Foundations Associate</p>
+            <p class="cert-issuer">Oracle Cloud Infrastructure</p>
+          </div>
+        </div>
+
+        <div class="cert-item reveal" style="transition-delay:0.1s">
+          <span class="cert-icon">CCSA</span>
+          <div class="cert-body">
+            <p class="cert-name">Check Point CCSA</p>
+            <p class="cert-issuer">Check Point</p>
+          </div>
+        </div>
+
+        <div class="cert-item reveal" style="transition-delay:0.15s">
+          <span class="cert-icon">CASP+</span>
+          <div class="cert-body">
+            <p class="cert-name">CompTIA Advanced Security Practitioner</p>
+            <p class="cert-issuer">CompTIA</p>
+          </div>
+        </div>
+
+        <div class="cert-item reveal" style="transition-delay:0.2s">
+          <span class="cert-icon">CAP</span>
+          <div class="cert-body">
+            <p class="cert-name">Certified Authorization Professional</p>
+            <p class="cert-issuer">ISC²</p>
+          </div>
+        </div>
+
+        <div class="cert-item reveal" style="transition-delay:0.1s">
+          <span class="cert-icon">Net+</span>
+          <div class="cert-body">
+            <p class="cert-name">CompTIA Network+</p>
+            <p class="cert-issuer">CompTIA</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       CURRENTLY LEARNING
+  ══════════════════════════════════════ -->
+  <section id="learning">
+    <div class="container">
+      <p class="section-tag reveal">// 07 — Currently Learning</p>
+      <h2 class="section-heading reveal" style="transition-delay:0.06s">Active<br>Learning Tracks</h2>
+
+      <div class="learning-grid">
+
+        <div class="learning-card reveal" style="transition-delay:0.1s">
+          <p class="learning-card-category">Container Orchestration · Cloud Architecture</p>
+          <p class="learning-card-title">Kubernetes — CKA &amp; CKS Certification Track</p>
+          <p class="learning-card-desc">Bridging 15+ years of enterprise network architecture into cloud-native infrastructure. Focused on Kubernetes networking (CNI plugins, Network Policies, service mesh), DoD-aligned security hardening (DISA STIG, Zero Trust, RBAC), and multi-cloud cluster architecture across EKS, GKE, and AKS.</p>
+
+          <div class="learning-meta">
+            <span class="learning-start-date">Started: April 2026</span>
+          </div>
+
+          <div class="phase-track">
+            <p class="phase-track-label">Progress — 4-Phase Track</p>
+            <div class="phase-steps">
+              <div class="phase-step active">
+                <p class="phase-step-num">Phase 1</p>
+                <p class="phase-step-name">Foundations</p>
+                <p class="phase-step-status">In Progress</p>
+              </div>
+              <div class="phase-step upcoming">
+                <p class="phase-step-num">Phase 2</p>
+                <p class="phase-step-name">Networking Deep Dive</p>
+                <p class="phase-step-status">Upcoming</p>
+              </div>
+              <div class="phase-step upcoming">
+                <p class="phase-step-num">Phase 3</p>
+                <p class="phase-step-name">Security &amp; DoD Compliance</p>
+                <p class="phase-step-status">Upcoming</p>
+              </div>
+              <div class="phase-step upcoming">
+                <p class="phase-step-num">Phase 4</p>
+                <p class="phase-step-name">Cloud Integration &amp; Architecture</p>
+                <p class="phase-step-status">Upcoming</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="target-certs">
+            <span class="target-cert-badge">CKA — Target: July 2026</span>
+            <span class="target-cert-badge">CKS — Target: September 2026</span>
+          </div>
+
+          <p class="learning-why">Filling the container orchestration gap for DoD Cloud Architect and SME IV roles.</p>
+        </div>
+
+        <!-- FUTURE LEARNING: Insert additional learning track cards here following the same pattern -->
+        <!-- Update Phase progress indicators and dates as learning progresses -->
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       CONTACT
+  ══════════════════════════════════════ -->
+  <section id="contact">
+    <div class="container">
+      <div class="contact-grid">
+
+        <div class="reveal-left">
+          <p class="section-tag">// 08 — Contact</p>
+          <h2 class="section-heading">Get In<br>Touch</h2>
+          <p>Available for consulting engagements, architecture advisory, and select full-time opportunities in DoD infrastructure, cloud networking, and AI-driven network automation. Reach out to start a conversation.</p>
+          <div class="clearance-badge">
+            <span class="clearance-badge-dot"></span>
+            <span>Active TS Clearance · DoD · Enterprise · Cloud · AI Automation</span>
+          </div>
+        </div>
+
+        <form class="contact-form reveal-right" style="transition-delay:0.1s"
+              action="mailto:contact@lateeflaw.com" method="post" enctype="text/plain">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name">Name</label>
+              <input type="text" id="name" name="name" placeholder="Your name" required />
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" placeholder="your@email.com" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" placeholder="Tell me about your project or opportunity..."></textarea>
+          </div>
+          <div class="form-submit">
+            <button type="submit" class="btn btn-primary">Send Message</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       FOOTER
+  ══════════════════════════════════════ -->
+  <footer>
+    <div class="container footer-inner">
+      <p class="footer-copy">© 2026 Lateef Law · <a href="https://lateeflaw.com">lateeflaw.com</a></p>
+      <div class="footer-links">
+        <a href="#" aria-label="LinkedIn">LinkedIn</a>
+        <a href="#" aria-label="GitHub">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ══════════════════════════════════════
+       JAVASCRIPT
+  ══════════════════════════════════════ -->
+  <script>
+    // ── Navbar scroll ──
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+      navbar.classList.toggle('scrolled', window.scrollY > 30);
+    }, { passive: true });
+
+    // ── Hamburger ──
+    const hamburger  = document.getElementById('hamburger');
+    const mobileMenu = document.getElementById('mobileMenu');
+    hamburger.addEventListener('click', () => {
+      const open = mobileMenu.classList.toggle('open');
+      hamburger.classList.toggle('open', open);
+      document.body.style.overflow = open ? 'hidden' : '';
+    });
+    document.querySelectorAll('.mobile-link').forEach(l => {
+      l.addEventListener('click', () => {
+        mobileMenu.classList.remove('open');
+        hamburger.classList.remove('open');
+        document.body.style.overflow = '';
+      });
+    });
+
+    // ── IntersectionObserver — scroll reveals ──
+    const revealEls = document.querySelectorAll('.reveal, .reveal-left, .reveal-right');
+    const revealObs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          revealObs.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    revealEls.forEach(el => revealObs.observe(el));
+
+    // ── Hero elements visible immediately (above fold) ──
+    document.querySelectorAll('#hero .reveal, #stats .reveal').forEach(el => {
+      el.classList.add('visible');
+    });
+
+    // ── Typewriter ──
+    const phrases = [
+      'Enterprise Network Architect',
+      'Dual CCIE Certified',
+      'Cloud Infrastructure Engineer',
+      'DoD Security Clearance Holder',
+      'BEYA 2023 Technology Leader',
+    ];
+    const twEl = document.getElementById('tw-text');
+    let pi = 0, ci = 0, deleting = false;
+    function type() {
+      const phrase = phrases[pi];
+      if (!deleting) {
+        twEl.textContent = phrase.slice(0, ++ci);
+        if (ci === phrase.length) {
+          deleting = true;
+          setTimeout(type, 2200);
+          return;
+        }
+        setTimeout(type, 60);
+      } else {
+        twEl.textContent = phrase.slice(0, --ci);
+        if (ci === 0) {
+          deleting = false;
+          pi = (pi + 1) % phrases.length;
+          setTimeout(type, 400);
+          return;
+        }
+        setTimeout(type, 35);
+      }
+    }
+    setTimeout(type, 800);
+
+    // ── Animated stat counters ──
+    const statVals = document.querySelectorAll('.stat-value[data-target]');
+    const countObs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        const el     = e.target;
+        const target = +el.dataset.target;
+        const suffix = el.dataset.suffix || '';
+        const start  = performance.now();
+        const dur    = 1200;
+        function step(now) {
+          const p   = Math.min((now - start) / dur, 1);
+          const val = Math.round(p * target);
+          el.textContent = val + suffix;
+          if (p < 1) requestAnimationFrame(step);
+          else el.textContent = target + suffix;
+        }
+        requestAnimationFrame(step);
+        countObs.unobserve(el);
+      });
+    }, { threshold: 0.5 });
+    statVals.forEach(el => countObs.observe(el));
+
+    // ── 3D card tilt on skill cards ──
+    document.querySelectorAll('.skill-card').forEach(card => {
+      const inner = card.querySelector('.skill-card-inner');
+      card.addEventListener('mousemove', e => {
+        const r   = card.getBoundingClientRect();
+        const x   = (e.clientX - r.left) / r.width  - 0.5;
+        const y   = (e.clientY - r.top)  / r.height - 0.5;
+        inner.style.transform = `rotateY(${x * 10}deg) rotateX(${-y * 10}deg)`;
+      });
+      card.addEventListener('mouseleave', () => {
+        inner.style.transform = '';
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Network Automation Lab Guide | Lateef Law</title>
+  <meta name="description" content="A complete network automation lab walkthrough from manual CLI to intent-driven automation. EVE-NG, Ansible, NetBox, Jinja2 templates, CI/CD pipelines, and drift detection — built and documented by a dual CCIE enterprise network architect.">
+  <meta name="author" content="Lateef Law">
+  <meta property="og:title" content="Network Automation Lab Guide — EVE-NG · Ansible · NetBox · Intent-Based Networking">
+  <meta property="og:description" content="A complete walkthrough from manual CLI to intent-driven automation. 13 labs across a 7-level automation maturity model.">
+  <meta property="og:url" content="https://lateeflaw.info/lab/">
+  <meta property="og:type" content="article">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg0:        #080d1a;
+      --bg1:        #0d1425;
+      --bg2:        #111c30;
+      --accent:     #00d4ff;
+      --accent-dim: rgba(0,212,255,0.1);
+      --accent-glow:rgba(0,212,255,0.3);
+      --gold:       #f0b429;
+      --green:      #22c55e;
+      --text:       #c8d8e8;
+      --muted:      #7a90a8;
+      --border:     rgba(0,212,255,0.12);
+      --border-mid: rgba(0,212,255,0.22);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg0);
+      color: var(--text);
+      font-family: 'Barlow', sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      overflow-x: hidden;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg0); }
+    ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+    ::selection { background: var(--accent); color: #000; }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 2.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── NAVBAR ── */
+    #navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 999;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      background: rgba(8,13,26,0.92);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(0,212,255,0.25);
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+    .nav-logo {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 1.45rem;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .nav-logo span { color: var(--accent); }
+    .nav-back {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .nav-back:hover { color: var(--accent); }
+
+    /* ── ARTICLE HEADER ── */
+    .article-header {
+      padding: 8rem 0 3rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .article-category {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--accent);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      opacity: 0.85;
+      margin-bottom: 1.25rem;
+    }
+    .article-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: clamp(2.1rem, 5vw, 3.2rem);
+      line-height: 1.05;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+    .article-subtitle {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.95rem;
+      color: var(--accent);
+      letter-spacing: 0.12em;
+      margin-bottom: 1.75rem;
+      opacity: 0.9;
+    }
+    .article-lede {
+      font-size: 1.05rem;
+      color: var(--text);
+      line-height: 1.75;
+      font-weight: 300;
+      margin-bottom: 1.75rem;
+      max-width: 720px;
+    }
+    .article-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      align-items: center;
+    }
+    .article-meta-item {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .article-meta-item span { color: var(--accent); }
+    .article-meta-sep {
+      color: var(--border-mid);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+    }
+
+    /* ── ARTICLE BODY ── */
+    .article-body {
+      padding: 3.5rem 0 5rem;
+    }
+    .section-block {
+      margin-bottom: 4rem;
+    }
+    .section-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--accent);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      opacity: 0.85;
+      margin-bottom: 1rem;
+    }
+    .section-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text);
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .article-body p {
+      font-size: 1rem;
+      color: var(--muted);
+      line-height: 1.85;
+      font-weight: 300;
+      margin-bottom: 1.25rem;
+    }
+    .article-body p strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* ── MATURITY MODEL TABLE ── */
+    .maturity-table {
+      margin-top: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .maturity-row {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 1.5rem;
+      padding: 1.25rem 1.5rem;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 3px;
+      align-items: start;
+    }
+    .maturity-row.inactive {
+      opacity: 0.45;
+      border-left-color: var(--muted);
+      background: var(--bg1);
+    }
+    .maturity-level {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 2.2rem;
+      color: var(--accent);
+      line-height: 1;
+      letter-spacing: 0.02em;
+    }
+    .maturity-row.inactive .maturity-level {
+      color: var(--muted);
+    }
+    .maturity-stage {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.15rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      margin-bottom: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .maturity-desc {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.7;
+      font-weight: 300;
+    }
+    .part2-badge {
+      display: inline-block;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.58rem;
+      padding: 0.18rem 0.5rem;
+      background: rgba(240,180,41,0.1);
+      border: 1px solid rgba(240,180,41,0.35);
+      color: var(--gold);
+      border-radius: 2px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    /* ── LAB GRID ── */
+    .lab-grid {
+      margin-top: 2rem;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+    .lab-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-left: 3px solid transparent;
+      border-radius: 3px;
+      padding: 1.25rem 1.35rem;
+      transition: background 0.2s, border-color 0.25s;
+    }
+    .lab-card:hover {
+      background: #152035;
+      border-left-color: var(--accent);
+    }
+    .lab-num {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--accent);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.85;
+      margin-bottom: 0.45rem;
+    }
+    .lab-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text);
+      line-height: 1.25;
+      margin-bottom: 0.6rem;
+    }
+    .lab-level {
+      display: inline-block;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.58rem;
+      padding: 0.18rem 0.55rem;
+      background: rgba(0,212,255,0.06);
+      border: 1px solid rgba(0,212,255,0.2);
+      color: var(--accent);
+      border-radius: 2px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ── ENVIRONMENT TABLE ── */
+    .env-table {
+      margin: 2rem 0 1.5rem;
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .env-table th, .env-table td {
+      padding: 0.85rem 1.25rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+    .env-table th {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--accent);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      background: var(--bg1);
+      font-weight: 400;
+    }
+    .env-table td {
+      color: var(--muted);
+      font-weight: 300;
+    }
+    .env-table td:first-child {
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+    }
+    .env-table tbody tr:last-child td { border-bottom: none; }
+
+    /* ── DOWNLOAD CTA ── */
+    .download-card {
+      background: var(--bg2);
+      border: 1px solid var(--border-mid);
+      border-left: 3px solid var(--accent);
+      border-radius: 3px;
+      padding: 2.5rem;
+      margin-top: 2rem;
+    }
+    .download-heading {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.4rem, 2.8vw, 1.9rem);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-top: 1rem;
+      padding: 0.95rem 1.75rem;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      text-decoration: none;
+      border-radius: 2px;
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      transition: all 0.22s ease;
+      position: relative;
+    }
+    .download-btn:hover {
+      background: var(--accent);
+      color: #000;
+      box-shadow: 0 0 24px var(--accent-glow);
+    }
+    .download-note {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      margin-top: 1.25rem;
+    }
+    .linkedin-link {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .linkedin-link:hover { color: var(--text); }
+
+    /* ── AUTHOR BIO ── */
+    .author-section {
+      padding: 2.5rem;
+      background: var(--bg1);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      margin-top: 4rem;
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+    .author-avatar-lg {
+      width: 64px; height: 64px;
+      border-radius: 3px;
+      background: var(--accent-dim);
+      border: 1px solid var(--border-mid);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--accent);
+      flex-shrink: 0;
+      letter-spacing: 0.05em;
+    }
+    .author-bio-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+    }
+    .author-bio-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+    .author-bio-desc {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.75;
+      font-weight: 300;
+    }
+    .author-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      padding: 0.5rem 1.25rem;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      text-decoration: none;
+      border-radius: 2px;
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      transition: all 0.22s ease;
+    }
+    .author-cta:hover { background: var(--accent); color: #000; }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 1.75rem 0;
+      background: var(--bg0);
+      border-top: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+    }
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .footer-copy {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+    .footer-copy a { color: var(--accent); text-decoration: none; }
+
+    @media (max-width: 768px) {
+      .lab-grid { grid-template-columns: 1fr; }
+      .maturity-row { grid-template-columns: 56px 1fr; gap: 1rem; padding: 1rem 1.1rem; }
+      .maturity-level { font-size: 1.8rem; }
+    }
+
+    @media (max-width: 600px) {
+      .container { padding: 0 1.25rem; }
+      .article-header { padding: 7rem 0 2.5rem; }
+      .author-section { flex-direction: column; gap: 1.25rem; }
+      .download-card { padding: 1.75rem 1.35rem; }
+      .env-table th, .env-table td { padding: 0.7rem 0.85rem; font-size: 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav id="navbar">
+    <div class="container nav-inner">
+      <a href="../index.html" class="nav-logo">LATEEF<span>.</span></a>
+      <a href="../index.html#projects" class="nav-back">← Back to Site</a>
+    </div>
+  </nav>
+
+  <!-- ARTICLE HEADER -->
+  <header class="article-header">
+    <div class="container">
+      <p class="article-category">Network Automation · Lab Guide · Enterprise Series</p>
+      <h1 class="article-title">Network Automation Lab Guide</h1>
+      <p class="article-subtitle">EVE-NG · Ansible · NetBox · Intent-Based Networking</p>
+      <p class="article-lede">A complete walkthrough from manual CLI to intent-driven automation. Built around a 7-level automation maturity model, this lab takes you through every layer of the stack — from typing commands by hand to a fully automated, compliance-checked, drift-detecting network driven entirely by NetBox as the source of truth.</p>
+      <div class="article-meta">
+        <span class="article-meta-item"><span>Lateef Law</span></span>
+        <span class="article-meta-sep">·</span>
+        <span class="article-meta-item">CCIE Enterprise #57597 · CCIE Service Provider</span>
+        <span class="article-meta-sep">·</span>
+        <span class="article-meta-item"><span>13 Labs</span></span>
+        <span class="article-meta-sep">·</span>
+        <span class="article-meta-item">Part <span>1 of 2</span></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ARTICLE BODY -->
+  <article class="article-body">
+    <div class="container">
+
+      <!-- ── SECTION 1 — WHY I BUILT THIS ── -->
+      <section class="section-block">
+        <p class="section-label">// 01 — Background</p>
+        <h2 class="section-title">Why I Built This</h2>
+        <p>When I started going deeper into network automation, I found myself jumping between concepts — Ansible here, NetBox there, Jinja2 templates somewhere else — and spending more time figuring out how it all connected than actually learning it. What I needed was a single, ordered progression that showed the full picture from start to finish.</p>
+        <p>So I built one.</p>
+        <p>This is the structured progression I wish had existed when I started. It's designed to work at any experience level — whether you're at CCNA trying to understand what automation even means, or a senior engineer who knows the CLI deeply and is looking for the bridge to intent-based operations.</p>
+      </section>
+
+      <!-- ── SECTION 2 — MATURITY MODEL ── -->
+      <section class="section-block">
+        <p class="section-label">// 02 — The Framework</p>
+        <h2 class="section-title">The Automation Maturity Model</h2>
+        <p>The entire lab is structured around a 7-level automation maturity model. Every lab uses OSPF configuration as the constant use case — keeping the task identical across levels so you can see exactly what changes at each layer of abstraction and why. Levels 1 through 5 are fully built out in this guide. Levels 6 and 7 are Part 2.</p>
+
+        <div class="maturity-table">
+
+          <div class="maturity-row">
+            <div class="maturity-level">1</div>
+            <div>
+              <div class="maturity-stage">Manual CLI</div>
+              <p class="maturity-desc">Baseline — commands typed by hand on each device individually.</p>
+            </div>
+          </div>
+
+          <div class="maturity-row">
+            <div class="maturity-level">2</div>
+            <div>
+              <div class="maturity-stage">Scripts (Ad-hoc)</div>
+              <p class="maturity-desc">Speed — Python/Paramiko, Netmiko, or Bash to push CLI commands. Faster but fragile, no idempotency.</p>
+            </div>
+          </div>
+
+          <div class="maturity-row">
+            <div class="maturity-level">3</div>
+            <div>
+              <div class="maturity-stage">Ansible Playbooks</div>
+              <p class="maturity-desc">Task-based automation — purpose-built IOS modules, idempotency, structured run reporting.</p>
+            </div>
+          </div>
+
+          <div class="maturity-row">
+            <div class="maturity-level">4</div>
+            <div>
+              <div class="maturity-stage">Ansible + Templates</div>
+              <p class="maturity-desc">Separation of concerns — Jinja2 templates hold logic, inventory holds data.</p>
+            </div>
+          </div>
+
+          <div class="maturity-row">
+            <div class="maturity-level">5</div>
+            <div>
+              <div class="maturity-stage">Ansible + NetBox</div>
+              <p class="maturity-desc">Source of truth — NetBox API replaces all static YAML, zero hardcoding.</p>
+            </div>
+          </div>
+
+          <div class="maturity-row inactive">
+            <div class="maturity-level">6</div>
+            <div>
+              <div class="maturity-stage">Service Orchestration (NSO) <span class="part2-badge">Part 2</span></div>
+              <p class="maturity-desc">Stateful service modeling — NSO maintains relationship between intent and device config, supports drift detection and atomic rollback.</p>
+            </div>
+          </div>
+
+          <div class="maturity-row inactive">
+            <div class="maturity-level">7</div>
+            <div>
+              <div class="maturity-stage">Model-Driven / Full Intent <span class="part2-badge">Part 2</span></div>
+              <p class="maturity-desc">YANG data models define desired state abstractly. The orchestrator translates intent into vendor-specific config across any platform.</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── SECTION 3 — WHAT'S INSIDE ── -->
+      <section class="section-block">
+        <p class="section-label">// 03 — Lab Contents</p>
+        <h2 class="section-title">What's Inside</h2>
+        <p>13 labs across 5 automation levels. Every lab includes complete working code, step-by-step instructions, expected output, and troubleshooting notes from errors encountered during actual lab builds.</p>
+
+        <div class="lab-grid">
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 01</p>
+            <p class="lab-name">Manual CLI OSPF Configuration</p>
+            <span class="lab-level">Level 1</span>
+          </div>
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 02</p>
+            <p class="lab-name">Ad-hoc Python/Paramiko Scripts</p>
+            <span class="lab-level">Level 2</span>
+          </div>
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 03</p>
+            <p class="lab-name">Ansible Playbooks (Task-Based)</p>
+            <span class="lab-level">Level 3</span>
+          </div>
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 04</p>
+            <p class="lab-name">Ansible + Jinja2 Templates</p>
+            <span class="lab-level">Level 4</span>
+          </div>
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 05</p>
+            <p class="lab-name">Intent-Based OSPF from NetBox</p>
+            <span class="lab-level">Level 5</span>
+          </div>
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 06</p>
+            <p class="lab-name">Loopback Deployment Playbook</p>
+            <span class="lab-level">Level 3</span>
+          </div>
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 07</p>
+            <p class="lab-name">Configuration Backup Automation</p>
+            <span class="lab-level">Level 3</span>
+          </div>
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 08</p>
+            <p class="lab-name">NetBox Dynamic Inventory</p>
+            <span class="lab-level">Level 5</span>
+          </div>
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 09</p>
+            <p class="lab-name">Interface Descriptions from NetBox</p>
+            <span class="lab-level">Level 5</span>
+          </div>
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 10</p>
+            <p class="lab-name">Full Intent Model (Zero Hardcoding)</p>
+            <span class="lab-level">Level 5 Advanced</span>
+          </div>
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 11</p>
+            <p class="lab-name">Compliance Checks + Tag Enforcement</p>
+            <span class="lab-level">Level 5 Advanced</span>
+          </div>
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 12</p>
+            <p class="lab-name">CI/CD Pipeline with Git</p>
+            <span class="lab-level">Level 5 / Bridge to 6</span>
+          </div>
+
+          <div class="lab-card">
+            <p class="lab-num">Lab 13</p>
+            <p class="lab-name">Drift Detection and Remediation</p>
+            <span class="lab-level">Level 5 / Bridge to 6</span>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── SECTION 4 — LAB ENVIRONMENT ── -->
+      <section class="section-block">
+        <p class="section-label">// 04 — Environment</p>
+        <h2 class="section-title">Lab Environment</h2>
+        <p>The lab runs entirely in EVE-NG using the following node images:</p>
+
+        <table class="env-table">
+          <thead>
+            <tr>
+              <th>Node</th>
+              <th>Image</th>
+              <th>Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>R1-BRANCH, R2-HQ, R3-DC</td>
+              <td>Cisco C8000V 17.13.01</td>
+              <td>WAN routers</td>
+            </tr>
+            <tr>
+              <td>SW-LAN1, SW-LAN2, SW-LAN3</td>
+              <td>Catalyst 9KV 17.13.1</td>
+              <td>LAN switches</td>
+            </tr>
+            <tr>
+              <td>Host-A, Host-B, Host-C</td>
+              <td>VPCS (built-in)</td>
+              <td>End hosts</td>
+            </tr>
+            <tr>
+              <td>AutomationBox</td>
+              <td>Ubuntu 22.04 Server</td>
+              <td>Ansible + NetBox</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>The AutomationBox runs Ansible, Python, and NetBox via Docker — all deployed and configured within the guide. No external services or cloud accounts required.</p>
+      </section>
+
+      <!-- ── SECTION 5 — DOWNLOAD ── -->
+      <section class="section-block">
+        <p class="section-label">// 05 — Get the Guide</p>
+
+        <div class="download-card">
+          <h2 class="download-heading">Download the Full Lab Guide</h2>
+          <p>The complete guide includes all 13 labs with full configuration code, Ansible playbooks, Jinja2 templates, NetBox data model setup, CI/CD pipeline scripts, drift detection playbooks, and a troubleshooting reference built from real errors encountered during the lab build.</p>
+          <p>Part 1 covers Levels 1 through 5. Part 2 — covering Cisco NSO, YANG models, and model-driven intent — is in development.</p>
+          <a href="network-automation-lab-guide.pdf" download class="download-btn">Download Lab Guide (PDF) →</a>
+          <p class="download-note">Free to use and share. Part 2 in development — follow on LinkedIn for updates.</p>
+          <a href="https://www.linkedin.com/in/lateeflaw" class="linkedin-link">Follow on LinkedIn →</a>
+        </div>
+      </section>
+
+      <!-- ── AUTHOR BIO ── -->
+      <div class="author-section">
+        <div class="author-avatar-lg">LL</div>
+        <div class="author-bio-text">
+          <p class="author-bio-name">Lateef Law</p>
+          <p class="author-bio-title">CCIE Enterprise #57597 · CCIE Service Provider · AZ-700 · CASP+ · CAP · TS Clearance Active</p>
+          <p class="author-bio-desc">Enterprise Network Architect and Cloud Infrastructure Engineer at General Dynamics IT, supporting the Defense Logistics Agency's global WAN. 15+ years designing mission-critical networks for DoD and enterprise environments. 2023 BEYA Modern-Day Technology Leader Award.</p>
+          <a href="https://www.linkedin.com/in/lateeflaw" class="author-cta">Connect on LinkedIn</a>
+        </div>
+      </div>
+
+    </div>
+  </article>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container footer-inner">
+      <p class="footer-copy">© 2026 Lateef Law · <a href="../index.html">lateeflaw.info</a></p>
+    </div>
+  </footer>
+
+</body>
+</html>
