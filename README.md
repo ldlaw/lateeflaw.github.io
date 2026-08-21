@@ -1,3 +1,3 @@
-# Lateef Law
+# lateeflaw.github.io
 
 My Portfolio Website
