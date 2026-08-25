@@ -8,3 +8,7 @@ design/
 
 # Local build guide — not part of the site.
 lateeflaw_build_guide.pdf
+
+# Rollback snapshots of previously-published versions. Local only —
+# these must never be served by GitHub Pages as duplicate pages.
+archive/
