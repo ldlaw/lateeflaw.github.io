@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPSec Over High-Bandwidth Cloud Interconnects — Lateef Law</title>
+  <meta name="description" content="When security requirements mandate IPSec but a single cloud-native tunnel can't saturate a 100G interconnect, you need a real design strategy. A deep-dive into ECMP flow pinning, MACsec tradeoffs, and the backbone encryption gap the providers don't advertise.">
+  <meta name="author" content="Lateef Law">
+  <meta property="og:title" content="IPSec Over High-Bandwidth Cloud Interconnects: The Throughput Problem No One Talks About">
+  <meta property="og:description" content="A deep-dive into ECMP flow pinning, MACsec tradeoffs, and the backbone encryption gap the providers don't advertise.">
+  <meta property="og:url" content="https://lateeflaw.info/articles/ipsec-cloud-interconnect.html">
+  <meta property="og:type" content="article">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg0:        #080d1a;
+      --bg1:        #0d1425;
+      --bg2:        #111c30;
+      --accent:     #00d4ff;
+      --accent-dim: rgba(0,212,255,0.1);
+      --accent-glow:rgba(0,212,255,0.3);
+      --gold:       #f0b429;
+      --green:      #22c55e;
+      --text:       #c8d8e8;
+      --muted:      #7a90a8;
+      --border:     rgba(0,212,255,0.12);
+      --border-mid: rgba(0,212,255,0.22);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg0);
+      color: var(--text);
+      font-family: 'Barlow', sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg0); }
+    ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+    ::selection { background: var(--accent); color: #000; }
+
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 0 2.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── NAVBAR ── */
+    #navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 999;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      background: rgba(8,13,26,0.92);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(0,212,255,0.25);
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+    .nav-logo {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 1.45rem;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .nav-logo span { color: var(--accent); }
+    .nav-back {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .nav-back:hover { color: var(--accent); }
+
+    /* ── ARTICLE HEADER ── */
+    .article-header {
+      padding: 8rem 0 3rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .article-category {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--accent);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      opacity: 0.85;
+      margin-bottom: 1.25rem;
+    }
+    .article-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.9rem, 4vw, 2.8rem);
+      line-height: 1.05;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      margin-bottom: 1.5rem;
+      color: var(--text);
+    }
+    .article-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .article-meta-item {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .article-meta-item span { color: var(--accent); }
+    .article-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .article-tag {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.6rem;
+      padding: 0.22rem 0.55rem;
+      background: rgba(0,212,255,0.06);
+      border: 1px solid rgba(0,212,255,0.15);
+      color: var(--accent);
+      border-radius: 2px;
+      letter-spacing: 0.06em;
+    }
+
+    /* ── ARTICLE BODY ── */
+    .article-body {
+      padding: 3.5rem 0 5rem;
+    }
+    .article-body p {
+      font-size: 1rem;
+      color: var(--muted);
+      line-height: 1.85;
+      font-weight: 300;
+      margin-bottom: 1.5rem;
+    }
+    .article-body p strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .article-body h2 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.3rem, 2.5vw, 1.7rem);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      margin: 3rem 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .article-body h3 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      margin: 2rem 0 0.75rem;
+    }
+    .article-body ul, .article-body ol {
+      margin: 0 0 1.5rem 1.5rem;
+    }
+    .article-body li {
+      font-size: 0.97rem;
+      color: var(--muted);
+      line-height: 1.8;
+      font-weight: 300;
+      margin-bottom: 0.35rem;
+    }
+    .article-body li strong { color: var(--text); font-weight: 600; }
+
+    .callout {
+      padding: 1.25rem 1.5rem;
+      background: rgba(0,212,255,0.05);
+      border: 1px solid rgba(0,212,255,0.2);
+      border-left: 3px solid var(--accent);
+      border-radius: 3px;
+      margin: 2rem 0;
+    }
+    .callout p {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      line-height: 1.65;
+      margin: 0;
+    }
+
+    .callout-warning {
+      background: rgba(240,180,41,0.05);
+      border-color: rgba(240,180,41,0.2);
+      border-left-color: var(--gold);
+    }
+    .callout-warning p { color: var(--gold); }
+
+    .code-block {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1.25rem 1.5rem;
+      margin: 1.5rem 0;
+      overflow-x: auto;
+    }
+    .code-block pre {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--text);
+      line-height: 1.7;
+      white-space: pre;
+    }
+    .code-block .comment { color: var(--muted); opacity: 0.7; }
+    .code-block .keyword { color: var(--accent); }
+    .code-block .value   { color: var(--gold); }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 3rem 0;
+    }
+
+    /* ── AUTHOR BIO ── */
+    .author-section {
+      padding: 2.5rem;
+      background: var(--bg1);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      margin-top: 4rem;
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+    .author-avatar-lg {
+      width: 64px; height: 64px;
+      border-radius: 3px;
+      background: var(--accent-dim);
+      border: 1px solid var(--border-mid);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--accent);
+      flex-shrink: 0;
+      letter-spacing: 0.05em;
+    }
+    .author-bio-text {}
+    .author-bio-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+    }
+    .author-bio-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+    .author-bio-desc {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.75;
+      font-weight: 300;
+    }
+    .author-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      padding: 0.5rem 1.25rem;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      text-decoration: none;
+      border-radius: 2px;
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      transition: all 0.22s ease;
+    }
+    .author-cta:hover { background: var(--accent); color: #000; }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 1.75rem 0;
+      background: var(--bg0);
+      border-top: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+    }
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .footer-copy {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+    .footer-copy a { color: var(--accent); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .container { padding: 0 1.25rem; }
+      .article-header { padding: 7rem 0 2.5rem; }
+      .author-section { flex-direction: column; gap: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav id="navbar">
+    <div class="container nav-inner">
+      <a href="../index.html" class="nav-logo">LATEEF<span>.</span></a>
+      <a href="../index.html#projects" class="nav-back">← Back to Site</a>
+    </div>
+  </nav>
+
+  <!-- ARTICLE HEADER -->
+  <header class="article-header">
+    <div class="container">
+      <p class="article-category">Cloud Networking · Security</p>
+      <h1 class="article-title">IPSec Over High-Bandwidth Cloud Interconnects:<br>The Throughput Problem No One Talks About</h1>
+      <div class="article-meta">
+        <span class="article-meta-item">By <span>Lateef Law</span></span>
+        <span class="article-meta-item">Published <span>March 2026</span></span>
+        <span class="article-meta-item">~5 min read</span>
+      </div>
+      <div class="article-tags">
+        <span class="article-tag">IPSec</span>
+        <span class="article-tag">MACsec</span>
+        <span class="article-tag">ECMP</span>
+        <span class="article-tag">Cloud Interconnect</span>
+        <span class="article-tag">Network Architecture</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ARTICLE BODY -->
+  <article class="article-body">
+    <div class="container">
+
+      <p>Here's a design problem that doesn't get talked about enough in cloud networking circles.</p>
+
+      <p>You've got a high-bandwidth cloud interconnect — 10G, 50G, maybe 100G. Your security requirements mandate IPSec encryption end-to-end. Simple enough on paper.</p>
+
+      <p>Then reality hits.</p>
+
+      <p>A single cloud-native IPSec tunnel can't saturate that interconnect. Cryptographic overhead and per-tunnel throughput limits mean one tunnel falls well short. So the natural answer is ECMP across multiple IPSec tunnels — spin up several, load balance across them, aggregate the bandwidth.</p>
+
+      <p>That works. Until it doesn't.</p>
+
+      <div class="callout">
+        <p>ECMP hashes on flow — source IP, destination IP, source port, destination port, protocol. A single flow is pinned to a single tunnel for its entire lifetime. You cannot split one flow across multiple paths. That's not a config issue, it's how the protocol works.</p>
+      </div>
+
+      <p>What does that mean in practice? If you have a workload generating one massive sustained flow — a large backup job, a bulk data transfer, a high-throughput database sync — that entire flow rides one tunnel. All your other tunnels sit largely idle for that transaction. You've built 100G of aggregate capacity and your critical job is capped at single-tunnel throughput.</p>
+
+      <p>You can improve distribution if applications generate multiple concurrent flows to the same destination — different source ports mean different hash values, different tunnel assignments. But banking on application behavior you don't control is a design risk, not a design decision.</p>
+
+      <h2>The Options</h2>
+
+      <p>Here's how I think about the tradeoffs:</p>
+
+      <h3>Option 1 — Accept ECMP with flow-level limits</h3>
+
+      <p>Works well when traffic is naturally diverse — many flows from many sources. Breaks down for bulk single-flow workloads. Lowest operational complexity, no additional cost.</p>
+
+      <h3>Option 2 — MACsec instead of IPSec</h3>
+
+      <p>Operates at Layer 2, encrypts the physical link rather than building tunnels. No per-tunnel throughput ceiling, no flow pinning. Both Azure ExpressRoute Direct (10G/100G) and Google Cloud Dedicated Interconnect (10G/100G/400G) support MACsec natively. For links running 40G or higher on Azure, use XPN ciphers — non-XPN ciphers will cause sporadic session failures at those speeds.</p>
+
+      <div class="callout-warning callout">
+        <p>Critical caveat: MACsec only encrypts the physical segment it's configured on. It does not extend into either provider's backbone. Google's own documentation states explicitly that MACsec for Cloud Interconnect does not provide encryption in transit within Google's network. AWS says the same. This matters for regulated or compliance-driven environments — MACsec gives you an encrypted handoff, but the backbone segments on each side remain under provider-managed encryption, not yours.</p>
+      </div>
+
+      <h3>Option 3 — Native encrypted interconnect (and where this is heading)</h3>
+
+      <p>AWS and Google Cloud announced at re:Invent 2025 a jointly managed interconnect with MACsec standard between their edge routers at the colocation handoff — no customer configuration required. Azure is expected to join in 2026. The industry is clearly moving toward native encrypted interconnects as a baseline. The same backbone caveat applies — the cross-provider handoff is covered, but provider backbone encryption on each side remains provider-managed.</p>
+
+      <h3>Option 4 — Segment and parallelize at the application layer</h3>
+
+      <p>Engineer the workload to generate multiple parallel streams. Tools like Aspera or custom multi-stream architectures break large transfers into many flows, turning the ECMP distribution problem into an asset. High implementation complexity, but effective when the workload supports it.</p>
+
+      <h2>The Honest Architecture Question</h2>
+
+      <p>The question underneath all of this isn't just "which option handles the bandwidth." It's: <strong>what does your security posture actually require vs. what does your policy say it requires?</strong></p>
+
+      <p>In my experience, owning your own keys is always the recommended posture — but ultimately this comes down to your organization's risk acceptance. And that risk calculation has to include performance. MACsec operates at line rate with hardware-based encryption. IPSec introduces processing overhead that will cost you throughput, especially at scale.</p>
+
+      <p>If your security policy allows for provider-managed backbone encryption and you need to move large volumes of data at full interconnect speed, MACsec is a legitimate architectural choice. If cryptographic control is a hard requirement — your keys, your algorithm, your audit trail — then IPSec or TLS layered on top is non-negotiable, and you design your workloads around the throughput ceiling accordingly.</p>
+
+      <p>There is no free lunch, but at least now you know exactly what you're paying for.</p>
+
+      <p>If you've hit this problem in your environment, I'd be curious how you solved it — or what constraints made the obvious solutions unavailable.</p>
+
+      <hr class="section-divider">
+
+      <!-- AUTHOR BIO -->
+      <div class="author-section">
+        <div class="author-avatar-lg">LL</div>
+        <div class="author-bio-text">
+          <p class="author-bio-name">Lateef Law</p>
+          <p class="author-bio-title">Enterprise Network Architect · Cloud Infrastructure Engineer · Dual CCIE</p>
+          <p class="author-bio-desc">15+ years designing mission-critical networks for the Department of Defense. Currently serving as Enterprise Architect at General Dynamics, supporting the Defense Logistics Agency's global WAN. CCIE Enterprise · CCIE SP · TS Clearance Active · BEYA 2023 Modern-Day Technology Leader.</p>
+          <a href="https://www.linkedin.com/in/lateeflaw" class="author-cta">Connect on LinkedIn</a>
+        </div>
+      </div>
+
+    </div>
+  </article>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container footer-inner">
+      <p class="footer-copy">© 2026 Lateef Law · <a href="https://lateeflaw.info">lateeflaw.info</a></p>
+    </div>
+  </footer>
+
+</body>
+</html>
