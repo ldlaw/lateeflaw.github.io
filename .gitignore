@@ -2,3 +2,9 @@
 # Contains personal details (clearance, employer, career timeline) that
 # must not reach the public repo.
 CLAUDE.md
+
+# Draft redesign options under review — deliberately local, never published.
+design/
+
+# Local build guide — not part of the site.
+lateeflaw_build_guide.pdf
