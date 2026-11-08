@@ -153,6 +153,11 @@
       -webkit-backdrop-filter: blur(18px);
       border-bottom-color: rgba(0,212,255,0.4);
     }
+    /* Solid bar while the menu is open, so scrolling links don't run into the logo or the close button. */
+    #navbar.menu-open {
+      background: var(--bg0);
+      border-bottom-color: rgba(0,212,255,0.4);
+    }
     .nav-inner {
       display: flex;
       align-items: center;
@@ -228,10 +233,16 @@
       z-index: 998;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 2.5rem;
+      justify-content: flex-start;
+      gap: clamp(1rem, 3vh, 2.5rem);
+      padding: 4.5rem 1rem 1.5rem;   /* clear of the 60px bar */
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
     .mobile-menu.open { display: flex; }
+    /* auto margins: centred when there is room, no cut-off top link when there is not */
+    .mobile-menu a:first-child { margin-top: auto; }
+    .mobile-menu a:last-child { margin-bottom: auto; }
     .mobile-menu a {
       font-family: 'Barlow Condensed', sans-serif;
       font-weight: 800;
@@ -243,6 +254,7 @@
       transition: color 0.2s;
     }
     .mobile-menu a:hover { color: var(--accent); }
+    @media (max-height: 800px) { .mobile-menu a { font-size: 1.7rem; } }
 
     /* ═══════════════════════════════════════
        HERO
@@ -1314,7 +1326,7 @@
         <li><a href="#contact">Contact</a></li>
       </ul>
       <div class="nav-hamburger-wrap">
-        <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+        <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-controls="mobileMenu" aria-expanded="false">
           <span></span><span></span><span></span>
         </button>
       </div>
@@ -2014,17 +2026,21 @@
     // ── Hamburger ──
     const hamburger  = document.getElementById('hamburger');
     const mobileMenu = document.getElementById('mobileMenu');
-    hamburger.addEventListener('click', () => {
-      const open = mobileMenu.classList.toggle('open');
+    const setMenu = (open) => {
+      mobileMenu.classList.toggle('open', open);
       hamburger.classList.toggle('open', open);
+      navbar.classList.toggle('menu-open', open);
+      hamburger.setAttribute('aria-expanded', String(open));
       document.body.style.overflow = open ? 'hidden' : '';
+    };
+    hamburger.addEventListener('click', () => setMenu(!mobileMenu.classList.contains('open')));
+    document.querySelectorAll('.mobile-link').forEach(l => l.addEventListener('click', () => setMenu(false)));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && mobileMenu.classList.contains('open')) { setMenu(false); hamburger.focus(); }
     });
-    document.querySelectorAll('.mobile-link').forEach(l => {
-      l.addEventListener('click', () => {
-        mobileMenu.classList.remove('open');
-        hamburger.classList.remove('open');
-        document.body.style.overflow = '';
-      });
+    // Close the menu if the hamburger is hidden (window grown, tablet rotated).
+    window.addEventListener('resize', () => {
+      if (mobileMenu.classList.contains('open') && getComputedStyle(hamburger).display === 'none') setMenu(false);
     });
 
     // ── IntersectionObserver — scroll reveals ──
