@@ -13,6 +13,7 @@
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
   <style>
     /* ═══════════════════════════════════════
@@ -300,6 +301,22 @@
     }
 
     .hero-inner { position: relative; z-index: 2; }
+    /* GLOBE:HERO-SHIFT BEGIN · desktop only: nudge the hero text block left so it overlaps the globe less.
+       Relative offset only, nothing else moves. Tablet and phone (900px and below) keep their current position. */
+    @media (min-width: 901px) { .hero-inner { right: clamp(40px, 3.5vw, 60px); } }
+    /* GLOBE:HERO-SHIFT END */
+    /* GLOBE:HERO-CONTRAST BEGIN · phone and tablet (900px and below): the globe keeps its full brightness and the hero text is protected by
+       a dark halo that hugs its letters (label, name, typewriter line, badges, paragraph). text-shadow only: no box, card or overlay, so
+       nothing moves, resizes, recolours or takes a click or touch, and the globe canvas is not touched. Desktop (901px and up) never matches.
+       Plain CSS in the head, so it is there from first paint. */
+    @media (max-width: 900px) {
+      #hero .hero-label,
+      #hero .hero-name { text-shadow: 0 0 2px rgba(7,12,18,.9), 0 0 8px rgba(7,12,18,.8), 0 0 18px rgba(7,12,18,.55); }
+      #hero .hero-typewriter { text-shadow: 0 0 2px #070c12, 0 0 3px #070c12, 0 0 5px #070c12, 0 0 9px rgba(7,12,18,.95), 0 0 16px rgba(7,12,18,.9), 0 0 28px rgba(7,12,18,.8), 0 0 44px rgba(7,12,18,.55); }
+      #hero .badge { text-shadow: 0 0 3px rgba(7,12,18,1), 0 0 8px rgba(7,12,18,.9), 0 0 16px rgba(7,12,18,.7); }
+      #hero .hero-tagline { text-shadow: 0 0 2px #070c12, 0 0 3px #070c12, 0 0 6px rgba(7,12,18,.95), 0 0 12px rgba(7,12,18,.9), 0 0 22px rgba(7,12,18,.8), 0 0 36px rgba(7,12,18,.6); }
+    }
+    /* GLOBE:HERO-CONTRAST END */
     /* ── Hero network globe (Three.js canvas, sits behind all hero content) ── */
     #hero-globe {
       position: absolute;
@@ -2123,265 +2140,1258 @@
   </script>
 
   <!-- ══════════════════════════════════════
-       HERO NETWORK GLOBE (Three.js r128)
+       HERO GLOBE · A2 v9 (Three.js r128)
+       Built from the A2 v9 globe prototype (kept locally, not part of this site). The blocks below are copied
+       unchanged, except the prototype's simulated provider and self-test, which are not shipped.
+       Comparison control:  ?globe=reference | ?globe=improved (default)
   ══════════════════════════════════════ -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script>
-  /* ─────────────────────────────────────────────────────────────
-     Interactive network globe behind the hero content.
-     Wireframe sphere of nodes + edges, slow Y auto-rotation,
-     subtle cursor-parallax tilt, hover slowdown, staggered node
-     pulse. Fails silently (hero unchanged) if the CDN is blocked.
-  ───────────────────────────────────────────────────────────── */
-  (function () {
-    const canvas = document.getElementById('hero-globe');
-    const hero   = document.getElementById('hero');
-    if (!canvas || !hero || typeof THREE === 'undefined') return;
+  <!-- GLOBE:BEGIN a2v9 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous"></script>
+<script data-module="geo">
+(function (root) {
+  'use strict';
+  const D2R = Math.PI / 180, TAU = Math.PI * 2;
 
-    const NODE_COLOR    = new THREE.Color('#378ADD');
-    const HOTSPOT_COLOR = new THREE.Color('#7fc4ff');
-    const EDGE_COLOR    = 0x378ADD;
-    const EDGE_OPACITY  = 0.3;
-    const RADIUS        = 1.0;
+  // ---- constants taken from the approved A2 v9 reference ----
+  const LAT_MIN = -55, LAT_MAX = 82, LON_MIN = -178, LON_MAX = 180;
+  const BASE_STEP = 1.85;   // reference lattice step, degrees
+  const LAND_R = 1.008;     // land particles float slightly above the unit sphere
+  const MATCH_LAT = 38;     // equal-area spacing is matched to the reference density at this latitude
 
-    let W = hero.clientWidth  || window.innerWidth;
-    let H = hero.clientHeight || window.innerHeight;
+  const HUBS = [
+    { id: 'nova', label: 'Northern Virginia, US', lon: -77.3,  lat: 38.85 },
+    { id: 'lon',  label: 'London, GB',            lon: -0.13,  lat: 51.5  },
+    { id: 'fra',  label: 'Frankfurt, DE',         lon: 8.68,   lat: 50.1  },
+    { id: 'sin',  label: 'Singapore, SG',         lon: 103.82, lat: 1.35  },
+    { id: 'tyo',  label: 'Tokyo, JP',             lon: 139.7,  lat: 35.7  }
+  ];
+  // index pairs into HUBS: NoVA-London, NoVA-Frankfurt, London-Singapore, Frankfurt-Tokyo, NoVA-Tokyo
+  const ROUTES = [[0, 1], [0, 2], [1, 3], [2, 4], [0, 4]];
 
-    // ── Renderer / scene / camera ──
-    const renderer = new THREE.WebGLRenderer({
-      canvas: canvas, antialias: true, alpha: true, powerPreference: 'high-performance'
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setSize(W, H, false);
-    renderer.setClearAlpha(0);           // CSS paints #070c12 behind the canvas
+  // Geographic -> 3D. The reference's rotate() ends with x:-x (that is what puts east on the right when
+  // viewed from +z). The mirror is baked in here so the runtime transform is a pure rotation:
+  //   Euler(pitch, -angle, 0, 'XYZ')  reproduces rotate(p, angle, pitch) exactly.
+  function unit(lon, lat, r) {
+    const la = lat * D2R, lo = lon * D2R;
+    return [-r * Math.cos(la) * Math.cos(lo), r * Math.sin(la), r * Math.cos(la) * Math.sin(lo)];
+  }
 
-    const scene  = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
-    camera.position.set(0, 0, 3.4);
-
-    const globe = new THREE.Group();
-    scene.add(globe);
-
-    // ── Node positions: Fibonacci sphere (even distribution) ──
-    const NODE_COUNT = W < 900 ? 200 : 340;
-    const GOLDEN     = Math.PI * (3 - Math.sqrt(5));
-    const points     = [];
-    for (let i = 0; i < NODE_COUNT; i++) {
-      const y     = 1 - (i / (NODE_COUNT - 1)) * 2;
-      const rAt   = Math.sqrt(Math.max(0, 1 - y * y));
-      const theta = GOLDEN * i;
-      points.push(new THREE.Vector3(
-        Math.cos(theta) * rAt * RADIUS,
-        y * RADIUS,
-        Math.sin(theta) * rAt * RADIUS
-      ));
+  function inside(lon, lat, poly) {            // even-odd ray test, identical to the reference's insidePoly
+    let ins = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const a = poly[i], b = poly[j];
+      if ((a[1] > lat) !== (b[1] > lat) && lon < (b[0] - a[0]) * (lat - a[1]) / (b[1] - a[1]) + a[0]) ins = !ins;
     }
-
-    // ── Hotspots: 8–12 random nodes that pulse brighter ──
-    const HOTSPOT_COUNT = 8 + Math.floor(Math.random() * 5);   // 8..12
-    const hotspots = new Set();
-    while (hotspots.size < HOTSPOT_COUNT) {
-      hotspots.add(Math.floor(Math.random() * NODE_COUNT));
+    return ins;
+  }
+  function prepare(shapes) {                   // bounding boxes only speed things up; results are identical
+    return shapes.map(function (p) {
+      let a = 1e9, b = -1e9, c = 1e9, d = -1e9;
+      for (let i = 0; i < p.length; i++) {
+        const v = p[i];
+        if (v[0] < a) a = v[0]; if (v[0] > b) b = v[0]; if (v[1] < c) c = v[1]; if (v[1] > d) d = v[1];
+      }
+      return { p: p, a: a, b: b, c: c, d: d };
+    });
+  }
+  function insideAny(prep, lon, lat) {
+    for (let i = 0; i < prep.length; i++) {
+      const q = prep[i];
+      if (lon < q.a || lon > q.b || lat < q.c || lat > q.d) continue;
+      if (inside(lon, lat, q.p)) return true;
     }
+    return false;
+  }
 
-    // ── Node geometry (position + per-node size / phase / colour) ──
-    const posArr   = new Float32Array(NODE_COUNT * 3);
-    const sizeArr  = new Float32Array(NODE_COUNT);
-    const phaseArr = new Float32Array(NODE_COUNT);
-    const hotArr   = new Float32Array(NODE_COUNT);
-    const colArr   = new Float32Array(NODE_COUNT * 3);
-
-    points.forEach(function (p, i) {
-      posArr[i * 3]     = p.x;
-      posArr[i * 3 + 1] = p.y;
-      posArr[i * 3 + 2] = p.z;
-      const isHot   = hotspots.has(i);
-      sizeArr[i]    = isHot ? 17.0 : 6.5 + Math.random() * 2.5;
-      phaseArr[i]   = Math.random() * Math.PI * 2;             // staggered pulse
-      hotArr[i]     = isHot ? 1.0 : 0.0;
-      const c       = isHot ? HOTSPOT_COLOR : NODE_COLOR;
-      colArr[i * 3]     = c.r;
-      colArr[i * 3 + 1] = c.g;
-      colArr[i * 3 + 2] = c.b;
-    });
-
-    const nodeGeo = new THREE.BufferGeometry();
-    nodeGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-    nodeGeo.setAttribute('aSize',    new THREE.BufferAttribute(sizeArr, 1));
-    nodeGeo.setAttribute('aPhase',   new THREE.BufferAttribute(phaseArr, 1));
-    nodeGeo.setAttribute('aHot',     new THREE.BufferAttribute(hotArr, 1));
-    nodeGeo.setAttribute('aColor',   new THREE.BufferAttribute(colArr, 3));
-
-    const NODE_VERT = [
-      'attribute float aSize;',
-      'attribute float aPhase;',
-      'attribute float aHot;',
-      'attribute vec3  aColor;',
-      'uniform float uTime;',
-      'uniform float uPixelRatio;',
-      'uniform float uScale;',
-      'varying float vAlpha;',
-      'varying vec3  vColor;',
-      'void main() {',
-      '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
-      '  float rate  = mix(1.1, 2.2, aHot);',
-      '  float pulse = 0.5 + 0.5 * sin(uTime * rate + aPhase);',
-      '  float base  = mix(0.42, 0.55, aHot);',
-      '  float amp   = mix(0.28, 0.45, aHot);',
-      '  vAlpha = base + amp * pulse;',
-      '  vColor = aColor;',
-      '  float grow = 1.0 + 0.35 * pulse * aHot;',
-      '  gl_PointSize = aSize * grow * uPixelRatio * clamp(uScale, 0.55, 1.25) * (2.6 / -mv.z);',
-      '  gl_Position  = projectionMatrix * mv;',
-      '}'
-    ].join('\n');
-
-    const NODE_FRAG = [
-      'varying float vAlpha;',
-      'varying vec3  vColor;',
-      'void main() {',
-      '  float d = length(gl_PointCoord - vec2(0.5));',
-      '  if (d > 0.5) discard;',
-      '  float core = smoothstep(0.5, 0.0, d);',
-      '  gl_FragColor = vec4(vColor, core * core * vAlpha);',
-      '}'
-    ].join('\n');
-
-    const nodeMat = new THREE.ShaderMaterial({
-      transparent:    true,
-      depthWrite:     false,
-      blending:       THREE.AdditiveBlending,
-      uniforms:       {
-        uTime:       { value: 0 },
-        uPixelRatio: { value: renderer.getPixelRatio() },
-        uScale:      { value: 1 }
-      },
-      vertexShader:   NODE_VERT,
-      fragmentShader: NODE_FRAG
-    });
-
-    globe.add(new THREE.Points(nodeGeo, nodeMat));
-
-    // ── Edges: link every node to its near neighbours ──
-    const LINK_DIST = RADIUS * (NODE_COUNT > 260 ? 0.30 : 0.38);
-    const MAX_LINKS = 5;
-    const edgeVerts = [];
-    for (let i = 0; i < NODE_COUNT; i++) {
-      let links = 0;
-      for (let j = i + 1; j < NODE_COUNT && links < MAX_LINKS; j++) {
-        if (points[i].distanceTo(points[j]) < LINK_DIST) {
-          edgeVerts.push(
-            points[i].x, points[i].y, points[i].z,
-            points[j].x, points[j].y, points[j].z
-          );
-          links++;
+  // distribution 'reference'  : the approved equal-angle lattice (1.85 deg), including its row stagger
+  // distribution 'equal-area' : constant arc spacing; each latitude row gets 360*cos(lat)/d dots
+  // Exactness-preserving speed-up of insideAny(): for one latitude, gather where every polygon edge crosses it (the very
+  // same arithmetic as inside()), so each longitude is answered by an even-odd count instead of a full ray test.
+  // Each polygon keeps its own parity and a cell is land if ANY polygon contains it, exactly like insideAny().
+  function rowTest(prep, lat) {
+    const rows = [];
+    for (let k = 0; k < prep.length; k++) {
+      const q = prep[k]; if (lat < q.c || lat > q.d) continue;
+      const poly = q.p, xs = [];
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const a = poly[i], b = poly[j];
+        if ((a[1] > lat) !== (b[1] > lat)) xs.push((b[0] - a[0]) * (lat - a[1]) / (b[1] - a[1]) + a[0]);
+      }
+      if (xs.length) { xs.sort(function (m, n) { return m - n; }); rows.push({ a: q.a, b: q.b, xs: xs }); }
+    }
+    return function (lon) {
+      for (let r = 0; r < rows.length; r++) {
+        const R = rows[r]; if (lon < R.a || lon > R.b) continue;
+        const xs = R.xs; let lo = 0, hi = xs.length;   // first index with xs[i] > lon
+        while (lo < hi) { const mid = (lo + hi) >> 1; if (xs[mid] > lon) hi = mid; else lo = mid + 1; }
+        if (((xs.length - lo) & 1) === 1) return true;
+      }
+      return false;
+    };
+  }
+  function buildLand(prep, opt) {
+    const density = opt && opt.density > 0 ? opt.density : 1;
+    const base = BASE_STEP / Math.sqrt(density);
+    const lons = [], lats = [];
+    if (!opt || opt.distribution === 'reference') {
+      for (let lat = LAT_MIN; lat <= LAT_MAX; lat += base) {
+        const inLand = rowTest(prep, lat);
+        for (let lon = LON_MIN; lon < LON_MAX; lon += base) {
+          const lo = lon + (Math.round(lat * 10) % 2) * (base / 2);   // JS % keeps the sign, as in the reference
+          if (inLand(lo)) { lons.push(lo); lats.push(lat); }
+        }
+      }
+    } else {
+      const d = base * Math.sqrt(Math.cos(MATCH_LAT * D2R));
+      let row = 0;
+      for (let lat = LAT_MIN; lat <= LAT_MAX; lat += d, row++) {
+        const inLand = rowTest(prep, lat);
+        const n = Math.max(6, Math.round(360 * Math.cos(lat * D2R) / d));
+        const s = 360 / n, off = (row % 2) * s / 2;
+        for (let i = 0; i < n; i++) {
+          const lo = -180 + off + i * s;
+          if (inLand(lo)) { lons.push(lo); lats.push(lat); }
         }
       }
     }
-    const edgeGeo = new THREE.BufferGeometry();
-    edgeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(edgeVerts), 3));
-    globe.add(new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({
-      color: EDGE_COLOR, transparent: true, opacity: EDGE_OPACITY, depthWrite: false
-    })));
-
-    // ── Layout: center-right on desktop, centered + scaled down on mobile ──
-    let globeScreenX = 0, globeScreenY = 0, globeScreenR = 0;
-
-    function layout() {
-      W = hero.clientWidth  || window.innerWidth;
-      H = hero.clientHeight || window.innerHeight;
-      if (!W || !H) return;
-
-      camera.aspect = W / H;
-      camera.updateProjectionMatrix();
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      renderer.setSize(W, H, false);
-      nodeMat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
-
-      const visH   = 2 * camera.position.z * Math.tan((camera.fov * Math.PI / 180) / 2);
-      const visW   = visH * camera.aspect;
-      const mobile = W < 900;
-
-      // Pick the on-screen diameter first, then solve back for the world scale,
-      // so the globe never blows up on tall / narrow viewports.
-      const diaPx = mobile ? W * 0.80 : Math.min(W * 0.52, H * 0.78);
-      const scale = (diaPx / H) * visH / (2 * RADIUS);
-
-      // Screen-space center: center-right on desktop, centered on mobile
-      const cxPx = mobile ? W / 2 : W * 0.72;
-      const cyPx = mobile ? H * 0.44 : H / 2;
-
-      globe.scale.setScalar(scale);
-      globe.position.x = ((cxPx - W / 2) / (W / 2)) * (visW / 2);
-      globe.position.y = ((H / 2 - cyPx) / (H / 2)) * (visH / 2);
-      nodeMat.uniforms.uScale.value = scale;
-
-      // Screen-space footprint of the globe — used for the hover test
-      globeScreenX = cxPx;
-      globeScreenY = cyPx;
-      globeScreenR = diaPx / 2;
+    const n = lons.length;
+    const pos = new Float32Array(n * 3), ll = new Float32Array(n * 2), phase = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const p = unit(lons[i], lats[i], LAND_R);
+      pos[i * 3] = p[0]; pos[i * 3 + 1] = p[1]; pos[i * 3 + 2] = p[2];
+      ll[i * 2] = lons[i]; ll[i * 2 + 1] = lats[i];
+      const seed = Math.sin(lons[i] * 12.9898 + lats[i] * 78.233) * 43758.5453;   // reference twinkle seed
+      let ph = (seed * 3.2) % TAU; if (ph < 0) ph += TAU;                         // reduced in double precision
+      phase[i] = ph;
     }
-    layout();
-
-    // ── Pointer parallax tilt + hover slowdown ──
-    let mouseX = 0, mouseY = 0, hovering = false;
-    window.addEventListener('mousemove', function (e) {
-      const r = hero.getBoundingClientRect();
-      const x = e.clientX - r.left;
-      const y = e.clientY - r.top;
-      mouseX = (x / r.width)  * 2 - 1;    // -1 .. 1
-      mouseY = (y / r.height) * 2 - 1;
-      const inHero = x >= 0 && x <= r.width && y >= 0 && y <= r.height;
-      hovering = inHero &&
-        Math.sqrt(Math.pow(x - globeScreenX, 2) + Math.pow(y - globeScreenY, 2)) < globeScreenR * 1.15;
-    }, { passive: true });
-    hero.addEventListener('mouseleave', function () { hovering = false; });
-
-    // ── Animation loop (requestAnimationFrame, delta-normalised) ──
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const BASE_SPIN    = reduceMotion ? 0.0005 : 0.0016;   // radians per 60fps frame
-    let spinY = 0, tiltX = 0, tiltY = 0, speed = 1, visible = true;
-    let last  = performance.now();
-
-    function frame(now) {
-      requestAnimationFrame(frame);
-      if (!visible) { last = now; return; }
-
-      const dt = Math.min((now - last) / 16.667, 3);   // frames elapsed, capped
-      last = now;
-
-      speed += ((hovering ? 0.45 : 1) - speed) * 0.06 * dt;   // ease the hover slowdown
-      spinY += BASE_SPIN * speed * dt;
-
-      // subtle cursor-following tilt
-      const targetX = reduceMotion ? 0 : mouseY *  0.20;
-      const targetY = reduceMotion ? 0 : mouseX * -0.28;
-      tiltX += (targetX - tiltX) * 0.05 * dt;
-      tiltY += (targetY - tiltY) * 0.05 * dt;
-
-      globe.rotation.x = tiltX;
-      globe.rotation.y = spinY + tiltY;
-
-      nodeMat.uniforms.uTime.value = now * 0.001;
-      renderer.render(scene, camera);
+    return { count: n, pos: pos, ll: ll, phase: phase, lons: lons, lats: lats };
+  }
+  function bandCounts(lats, edges) {
+    const out = [];
+    for (let i = 0; i < edges.length - 1; i++) {
+      let c = 0; for (let k = 0; k < lats.length; k++) if (lats[k] >= edges[i] && lats[k] < edges[i + 1]) c++;
+      out.push(c);
     }
-    requestAnimationFrame(frame);
+    return out;
+  }
 
-    // ── Pause when offscreen; keep the canvas locked to the hero on resize ──
-    if ('IntersectionObserver' in window) {
-      new IntersectionObserver(function (entries) {
-        visible = entries[0].isIntersecting;
-      }, { threshold: 0 }).observe(hero);
+  // 360-node Fibonacci sphere with each node linked to its two nearest neighbours (same rule as the reference)
+  function buildWire(n) {
+    n = n || 360;
+    const pts = [], golden = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < n; i++) {
+      const y = 1 - (i / (n - 1)) * 2, r = Math.sqrt(1 - y * y), a = golden * i;
+      pts.push([Math.cos(a) * r, y, Math.sin(a) * r]);
     }
-
-    let resizeTimer = null;
-    window.addEventListener('resize', function () {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(layout, 120);
+    const thr = 0.16 * 360 / n, edges = [];
+    for (let i = 0; i < n; i++) {
+      const ds = [];
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        const a = pts[i], b = pts[j], d = (a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]) + (a[2] - b[2]) * (a[2] - b[2]);
+        if (d < thr) ds.push([d, j]);
+      }
+      ds.sort(function (p, q) { return p[0] - q[0]; });
+      for (let k = 0; k < 2; k++) if (ds[k] && i < ds[k][1]) edges.push([i, ds[k][1]]);
+    }
+    const pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { pos[i * 3] = -pts[i][0]; pos[i * 3 + 1] = pts[i][1]; pos[i * 3 + 2] = pts[i][2]; }  // mirrored like everything else
+    const a = new Float32Array(edges.length * 3), b = new Float32Array(edges.length * 3);
+    edges.forEach(function (e, k) {
+      for (let c = 0; c < 3; c++) { a[k * 3 + c] = pos[e[0] * 3 + c]; b[k * 3 + c] = pos[e[1] * 3 + c]; }
     });
-    if ('ResizeObserver' in window) new ResizeObserver(layout).observe(hero);
-  })();
-  </script>
+    return { count: n, pos: pos, edges: edges, a: a, b: b, n: edges.length };
+  }
+
+  // great-circle arc with a radial lift of lift*sin(pi*u), as in the reference's arcGeo()
+  function arcFn(lonA, latA, lonB, latB) {
+    const p = unit(lonA, latA, 1), q = unit(lonB, latB, 1);
+    const dot = Math.max(-1, Math.min(1, p[0] * q[0] + p[1] * q[1] + p[2] * q[2]));
+    const omega = Math.acos(dot), sn = Math.sin(omega);
+    return {
+      omega: omega,
+      at: function (u, lift, base) {
+        const a = sn > 1e-6 ? Math.sin((1 - u) * omega) / sn : 1 - u;
+        const b = sn > 1e-6 ? Math.sin(u * omega) / sn : u;
+        const r = (base || 1) + lift * Math.sin(Math.PI * u);
+        return [(p[0] * a + q[0] * b) * r, (p[1] * a + q[1] * b) * r, (p[2] * a + q[2] * b) * r];
+      }
+    };
+  }
+  function polySegments(points) {
+    const n = points.length - 1, a = new Float32Array(n * 3), b = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) for (let c = 0; c < 3; c++) { a[i * 3 + c] = points[i][c]; b[i * 3 + c] = points[i + 1][c]; }
+    return { a: a, b: b, n: n };
+  }
+  function arcSegments(arc, n, lift) {
+    const pts = []; for (let j = 0; j <= n; j++) pts.push(arc.at(j / n, lift));
+    return polySegments(pts);
+  }
+
+  // Latitude/longitude guides: parallels every 15 deg (-75..75), half-meridians every 18 deg.
+  // 'reference' keeps the approved behaviour (lon 0..162 only); 'full' draws all 20 half-meridians.
+  function graticule(meridians) {
+    const A = [], B = [], W = [];
+    function push(p, q, w) { A.push(p); B.push(q); W.push(w); }
+    for (let lat = -75; lat <= 75; lat += 15) {
+      for (let j = 0; j < 150; j++) push(unit(j / 150 * 360, lat, 1), unit((j + 1) / 150 * 360, lat, 1), 0.095);
+    }
+    const lons = []; for (let lon = 0; lon < (meridians === 'full' ? 360 : 180); lon += 18) lons.push(lon);
+    lons.forEach(function (lon) {
+      for (let j = 0; j < 120; j++) push(unit(lon, -90 + j / 120 * 180, 1), unit(lon, -90 + (j + 1) / 120 * 180, 1), 0.10);
+    });
+    const n = A.length, a = new Float32Array(n * 3), b = new Float32Array(n * 3), w = new Float32Array(n);
+    for (let i = 0; i < n; i++) { a.set(A[i], i * 3); b.set(B[i], i * 3); w[i] = W[i]; }
+    return { a: a, b: b, alpha: w, n: n, meridianCount: lons.length };
+  }
+
+  root.GlobeGeo = {
+    D2R: D2R, TAU: TAU, LAND_R: LAND_R, BASE_STEP: BASE_STEP, MATCH_LAT: MATCH_LAT,
+    HUBS: HUBS, ROUTES: ROUTES,
+    unit: unit, inside: inside, prepare: prepare, insideAny: insideAny,
+    buildLand: buildLand, bandCounts: bandCounts, buildWire: buildWire,
+    arcFn: arcFn, arcSegments: arcSegments, polySegments: polySegments, graticule: graticule
+  };
+})(globalThis);
+</script>
+<script data-module="telemetry">
+/*
+  Renderer-independent event layer.
+
+  A TelemetryProvider is any object:  { id, label, simulated, start(emit), stop() }
+  and calls emit(rawEvent) whenever it has data. The Bus validates and normalises every event, so a
+  future RIPE Atlas / RIPE RIS Live / IODA adapter only has to produce this shape; the globe never
+  sees provider-specific payloads. No provider in this file talks to the network.
+
+  Normalised event:
+  {
+    id:          string                         unique per provider
+    type:        'rtt' | 'bgp_update' | 'outage_signal' | other   /^[a-z][a-z0-9_.-]{0,39}$/
+    timestamp:   epoch ms (ISO strings and Dates are accepted on input)
+    source:      { lat, lon, label?, countryCode? } | null
+    destination: { lat, lon, label?, countryCode? } | null
+    attribution: { provider, simulated, label?, url?, license? }       (required)
+    measurement: { value:number, unit:string, metric?:string } | null
+    network:     { asn?, peerAsn?, probeId?, prefix?, collector? }     (optional)
+    severity:    'info' | 'notice' | 'warning' | 'critical'            (default 'info')
+  }
+  An event with both endpoints is drawn as a great-circle ARC BETWEEN THOSE ENDPOINTS. That arc is a
+  visual connector only: it is not a traceroute, a BGP path, or any verified physical network path.
+*/
+(function (root) {
+  'use strict';
+  const SEVERITIES = ['info', 'notice', 'warning', 'critical'];
+  const ARC_DISCLAIMER = 'Arcs join the two measurement endpoints along the shortest great-circle line, for visualisation only. They are not traceroutes, BGP paths, or any verified physical route taken by traffic.';
+
+  function isNum(x) { return typeof x === 'number' && isFinite(x); }
+  function str(v, max) { return typeof v === 'string' && v.length ? v.slice(0, max || 120) : undefined; }
+  function isAsn(x) { return Number.isInteger(x) && x >= 0 && x <= 4294967295; }
+  function toMs(t) {
+    if (isNum(t)) return t > 0 ? Math.round(t) : null;
+    if (t instanceof Date) { const v = t.getTime(); return isNum(v) ? v : null; }
+    if (typeof t === 'string') { const v = Date.parse(t); return isNum(v) ? v : null; }
+    return null;
+  }
+  function coord(c, label, errs) {
+    if (c == null) return null;
+    if (typeof c !== 'object') { errs.push(label + ' must be an object'); return null; }
+    if (!isNum(c.lat) || c.lat < -90 || c.lat > 90) { errs.push(label + '.lat must be a number in [-90, 90]'); return null; }
+    if (!isNum(c.lon) || c.lon < -180 || c.lon > 180) { errs.push(label + '.lon must be a number in [-180, 180]'); return null; }
+    const o = { lat: c.lat, lon: c.lon };
+    const l = str(c.label, 80); if (l) o.label = l;
+    const cc = str(c.countryCode, 3); if (cc) o.countryCode = cc.toUpperCase();
+    return Object.freeze(o);
+  }
+
+  function normalize(raw) {
+    const errs = [];
+    if (!raw || typeof raw !== 'object') return { ok: false, errors: ['event must be an object'] };
+    const id = str(raw.id, 80); if (!id) errs.push('id must be a non-empty string');
+    const type = typeof raw.type === 'string' && /^[a-z][a-z0-9_.-]{0,39}$/.test(raw.type) ? raw.type : null;
+    if (!type) errs.push('type must match /^[a-z][a-z0-9_.-]{0,39}$/');
+    const ts = toMs(raw.timestamp); if (ts == null) errs.push('timestamp must be epoch ms, an ISO-8601 string, or a Date');
+    const source = coord(raw.source, 'source', errs), destination = coord(raw.destination, 'destination', errs);
+
+    let attribution = null;
+    const a = raw.attribution;
+    if (!a || typeof a !== 'object' || !str(a.provider, 40)) errs.push('attribution.provider is required');
+    else {
+      const simulated = typeof a.simulated === 'boolean' ? a.simulated : a.provider === 'simulated';
+      if (a.provider === 'simulated' && !simulated) errs.push('attribution.simulated must be true for the simulated provider');
+      attribution = { provider: a.provider.slice(0, 40), simulated: simulated };
+      ['label', 'url', 'license'].forEach(function (k) { const v = str(a[k], 200); if (v) attribution[k] = v; });
+      Object.freeze(attribution);
+    }
+
+    let measurement = null;
+    if (raw.measurement != null) {
+      const m = raw.measurement;
+      if (typeof m !== 'object' || !isNum(m.value) || !str(m.unit, 16)) errs.push('measurement needs a finite numeric value and a unit');
+      else { measurement = { value: m.value, unit: m.unit.slice(0, 16) }; const mm = str(m.metric, 40); if (mm) measurement.metric = mm; Object.freeze(measurement); }
+    }
+
+    let network = null;
+    if (raw.network != null) {
+      const n = raw.network;
+      if (typeof n !== 'object') errs.push('network must be an object');
+      else {
+        network = {};
+        if (n.asn != null) { if (isAsn(n.asn)) network.asn = n.asn; else errs.push('network.asn must be an integer 0..4294967295'); }
+        if (n.peerAsn != null) { if (isAsn(n.peerAsn)) network.peerAsn = n.peerAsn; else errs.push('network.peerAsn must be an integer 0..4294967295'); }
+        if (n.probeId != null) { if (typeof n.probeId === 'string' || isNum(n.probeId)) network.probeId = n.probeId; else errs.push('network.probeId must be a string or number'); }
+        const pf = str(n.prefix, 64); if (pf) network.prefix = pf;
+        const cl = str(n.collector, 64); if (cl) network.collector = cl;
+        Object.freeze(network);
+      }
+    }
+
+    let severity = 'info';
+    if (raw.severity != null) { if (SEVERITIES.indexOf(raw.severity) >= 0) severity = raw.severity; else errs.push('severity must be one of ' + SEVERITIES.join(', ')); }
+
+    if (errs.length) return { ok: false, errors: errs };
+    return { ok: true, event: Object.freeze({ id: id, type: type, timestamp: ts, source: source, destination: destination, attribution: attribution, measurement: measurement, network: network, severity: severity }) };
+  }
+
+  class Bus {
+    constructor() { this.listeners = new Set(); this.provider = null; this.stats = { received: 0, accepted: 0, rejected: 0 }; this.lastErrors = []; }
+    on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
+    push(raw) {
+      this.stats.received++;
+      const r = normalize(raw);
+      if (!r.ok) { this.stats.rejected++; this.lastErrors = r.errors.slice(0, 5); return r; }
+      this.stats.accepted++;
+      this.listeners.forEach(function (fn) { try { fn(r.event); } catch (e) { /* a faulty listener must not break the stream */ } });
+      return r;
+    }
+    attach(provider) {
+      if (!provider || typeof provider.start !== 'function' || typeof provider.stop !== 'function') throw new TypeError('provider needs start(emit) and stop()');
+      this.detach(); this.provider = provider; provider.start((raw) => this.push(raw));
+    }
+    detach() { if (this.provider) { try { this.provider.stop(); } catch (e) { } this.provider = null; } }
+  }
+
+  root.GlobeTelemetry = { normalize: normalize, Bus: Bus, SEVERITIES: SEVERITIES, ARC_DISCLAIMER: ARC_DISCLAIMER };
+
+})(globalThis);
+</script>
+<script data-module="component">
+(function (root) {
+  'use strict';
+  const GG = root.GlobeGeo;
+  const D2R = GG.D2R, TAU = GG.TAU;
+  const CAM_DIST = 2.7 / 0.35;   // the reference's 2.7/(2.7 - z*0.35) is exactly a perspective camera this many radii away
+
+  const DEFAULTS = {
+    orientation: { lon: -99.2611, lat: 22.9183 },   // point facing the viewer at start (= reference angle 2.98, pitch 0.40)
+    rotationSpeed: 9.6274,                           // deg/s at speed 1 (reference: 0.0028 rad per 60 Hz frame)
+    speed: 1,
+    density: 1,
+    wireNodes: 360,
+    orbits: true,
+    animation: 'running',                            // 'running' | 'paused'
+    reducedMotion: 'auto',                           // 'auto' (follow OS) | 'reduce' | 'ignore'
+    maxPixelRatio: 2,
+    deferFirstDraw: false,                           // true: create() returns before the first draw; the draw (which compiles every shader) runs in the next frame, splitting start-up into two shorter tasks
+    layout: { cx: 0.52, cy: 0.48, radiusW: 0.40, radiusH: 0.43 },   // fractions of the canvas, or a function (w, h) => ({ cx, cy, rad }) in CSS px
+    geo: { meridians: 'full', alignment: 'registered', distribution: 'equal-area', datelineWrap: true },
+    // area: optional box {x, y, w, h} (fractions of the pointer target) that the pointer is measured against; outside it the pointer has no influence
+    pointer: { mode: 'smooth', yaw: 0.45, pitch: 0.30, yawTau: 0.35, pitchTau: 0.66, target: null, area: null },
+    traffic: { mode: 'reference', packetsPerRoute: 2, packetSpeed: 0.12 },   // 'reference' | 'telemetry' | 'off'
+    telemetry: { mapper: null, maxArcs: 24, maxRings: 32 },
+    shapes: null                                      // coastline polygons; defaults to GLOBE_LAND_SHAPES
+  };
+  const REDUCED_Q = '(prefers-reduced-motion: reduce)';
+
+  function merge(dst, src) {
+    for (const k in src) {
+      const v = src[k];
+      if (v && typeof v === 'object' && !Array.isArray(v) && !(typeof Element !== 'undefined' && v instanceof Element) && dst[k] && typeof dst[k] === 'object') merge(dst[k], v);
+      else dst[k] = v;
+    }
+    return dst;
+  }
+  // Deep copy of plain option objects. A shallow copy here once let one instance's options leak into another's (and into DEFAULTS).
+  function clone(o) {
+    const out = {};
+    for (const k in o) {
+      const v = o[k];
+      out[k] = (v && typeof v === 'object' && !Array.isArray(v) && !(typeof Element !== 'undefined' && v instanceof Element)) ? clone(v) : v;
+    }
+    return out;
+  }
+
+  /* ---------- GLSL ---------- */
+  const ILLUM = [
+    'uniform vec2 uCenters[5];',
+    'uniform float uRing[5];',
+    'uniform float uWrapLon;',
+    'float illumination(vec2 ll){',
+    '  float cl = cos(radians(ll.y));',
+    '  float ill = 0.0;',
+    '  for (int k = 0; k < 5; k++) {',
+    '    float dl = ll.x - uCenters[k].x;',
+    '    if (uWrapLon > 0.5) dl = mod(dl + 180.0, 360.0) - 180.0;',
+    '    float dx = dl * cl;',
+    '    float dy = ll.y - uCenters[k].y;',
+    '    float dist = sqrt(dx * dx + dy * dy);',
+    '    float ring = abs(dist - uRing[k]);',
+    '    ill = max(ill, exp(-ring * ring / 32.0) * exp(-dist / 85.0));',
+    '  }',
+    '  return ill;',
+    '}'
+  ].join('\n');
+
+  const DOT_FS = [
+    'uniform vec3 uColor;',
+    'varying float vAlpha;',
+    'varying float vRadDev;',
+    'varying float vSizeDev;',
+    'void main(){',
+    '  float d = length(gl_PointCoord - vec2(0.5)) * vSizeDev;',
+    '  float a = vAlpha * clamp(vRadDev - d + 0.5, 0.0, 1.0);',
+    '  gl_FragColor = vec4(uColor * a, a);',
+    '}'
+  ].join('\n');
+
+  const HIDE = '{ gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vAlpha = 0.0; vRadDev = 0.0; vSizeDev = 1.0; return; }';
+
+  const LAND_VS = [
+    'attribute vec2 aLL;', 'attribute float aPhase;',
+    'uniform float uPR; uniform float uTwinkleT; uniform float uMaxPoint;',
+    'varying float vAlpha; varying float vRadDev; varying float vSizeDev;',
+    ILLUM,
+    'void main(){',
+    '  vec4 w = modelMatrix * vec4(position, 1.0);',
+    '  if (w.z < -0.13) ' + HIDE,
+    '  float ill = illumination(aLL);',
+    '  float tw = 0.5 + 0.5 * sin(uTwinkleT + aPhase);',
+    '  float a = min(0.93, (w.z + 0.22) * 0.24 + 0.22 + ill * 0.48 + tw * 0.035);',
+    '  float rad = ill > 0.48 ? 1.6 : 1.03;',
+    '  vAlpha = a; vRadDev = rad * uPR;',
+    '  float sz = (2.0 * rad + 2.0) * uPR; vSizeDev = sz;',
+    '  gl_PointSize = min(sz, uMaxPoint);',
+    '  gl_Position = projectionMatrix * viewMatrix * w;',
+    '}'
+  ].join('\n');
+
+  const HALO_VS = [
+    'attribute vec2 aLL;', 'attribute float aPhase;',
+    'uniform float uPR; uniform float uMaxPoint;',
+    'varying float vAlpha; varying float vRadDev; varying float vSizeDev;',
+    ILLUM,
+    'void main(){',
+    '  vec4 w = modelMatrix * vec4(position, 1.0);',
+    '  if (w.z < -0.13) ' + HIDE,
+    '  float ill = illumination(aLL);',
+    '  if (ill <= 0.73) ' + HIDE,
+    '  vAlpha = (ill - 0.7) * 0.65; vRadDev = 3.1 * uPR;',
+    '  float sz = (2.0 * 3.1 + 2.0) * uPR; vSizeDev = sz;',
+    '  gl_PointSize = min(sz, uMaxPoint);',
+    '  gl_Position = projectionMatrix * viewMatrix * w;',
+    '}'
+  ].join('\n');
+
+  const NODE_VS = [
+    'uniform float uPR; uniform float uMaxPoint;',
+    'varying float vAlpha; varying float vRadDev; varying float vSizeDev;',
+    'void main(){',
+    '  vec4 w = modelMatrix * vec4(position, 1.0);',
+    '  float fr = w.z > 0.0 ? 1.0 : 0.0;',
+    '  float rad = mix(1.0, 1.65, fr);',
+    '  vAlpha = mix(0.23, 0.72, fr); vRadDev = rad * uPR;',
+    '  float sz = (2.0 * rad + 2.0) * uPR; vSizeDev = sz;',
+    '  gl_PointSize = min(sz, uMaxPoint);',
+    '  gl_Position = projectionMatrix * viewMatrix * w;',
+    '}'
+  ].join('\n');
+
+  // Screen-space-width line segments (WebGL lines are fixed at 1 device pixel; the reference uses 0.65-1.15 CSS px).
+  const LINE_VS = [
+    'attribute vec3 aA; attribute vec3 aB; attribute float aAlpha;',
+    '#ifdef USE_TINT', 'attribute vec3 aTint; varying vec3 vTint;', '#endif',
+    'uniform vec2 uRes; uniform float uWidth; uniform float uAlpha; uniform float uMode; uniform vec2 uZAlpha; uniform float uCullZ;',
+    'varying float vA;',
+    'void main(){',
+    '  vec4 wa = modelMatrix * vec4(aA, 1.0);',
+    '  vec4 wb = modelMatrix * vec4(aB, 1.0);',
+    '  vec4 ca = projectionMatrix * viewMatrix * wa;',
+    '  vec4 cb = projectionMatrix * viewMatrix * wb;',
+    '  vec2 hr = uRes * 0.5;',
+    '  vec2 pa = ca.xy / ca.w * hr;',
+    '  vec2 pb = cb.xy / cb.w * hr;',
+    '  vec2 dir = pb - pa;',
+    '  float len = length(dir);',
+    '  dir = len > 1e-4 ? dir / len : vec2(1.0, 0.0);',
+    '  vec2 nrm = vec2(-dir.y, dir.x);',
+    '  vec2 p = mix(pa, pb, position.x) + nrm * (position.y * uWidth * 0.5);',
+    '  gl_Position = vec4(p / hr, mix(ca.z / ca.w, cb.z / cb.w, position.x), 1.0);',
+    '  float a = uAlpha * aAlpha;',
+    '  if (uMode > 0.5) a = (0.5 * (wa.z + wb.z) > 0.0) ? uZAlpha.y : uZAlpha.x;',
+    '  if (wa.z < uCullZ || wb.z < uCullZ) a = 0.0;',
+    '  vA = a;',
+    '#ifdef USE_TINT', '  vTint = aTint;', '#endif',
+    '}'
+  ].join('\n');
+  const LINE_FS = [
+    'uniform vec3 uColor; varying float vA;',
+    '#ifdef USE_TINT', 'varying vec3 vTint;', '#endif',
+    'void main(){',
+    '#ifdef USE_TINT', '  gl_FragColor = vec4(vTint * vA, vA);', '#else', '  gl_FragColor = vec4(uColor * vA, vA);', '#endif',
+    '}'
+  ].join('\n');
+
+  // Glow sprites as instanced quads (no point-size limits). kind: 0 packet halo (reference), 1 expanding ring,
+  // 2 orbit dot (core + shadow-blur glow), 3 tinted packet head.
+  const SPRITE_VS = [
+    'attribute vec3 aPos; attribute vec4 aInfo; attribute vec3 aColor;',
+    'uniform vec2 uRes; uniform float uCullZ;',
+    'varying vec2 vUV; varying vec4 vInfo; varying vec3 vColor;',
+    'void main(){',
+    '  vec4 w = modelMatrix * vec4(aPos, 1.0);',
+    '  vec4 c = projectionMatrix * viewMatrix * w;',
+    '  vec2 ndc = c.xy / c.w + position.xy * aInfo.y / (uRes * 0.5);',
+    '  gl_Position = vec4(ndc, c.z / c.w, 1.0);',
+    '  if (w.z < uCullZ || aInfo.z <= 0.0) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);',
+    '  vUV = position.xy; vInfo = aInfo; vColor = aColor;',
+    '}'
+  ].join('\n');
+  const SPRITE_FS = [
+    'varying vec2 vUV; varying vec4 vInfo; varying vec3 vColor;',
+    'void main(){',
+    '  float kind = vInfo.x; float al = vInfo.z; float aux = vInfo.w;',
+    '  float d = length(vUV) * vInfo.y;',
+    '  vec4 o = vec4(0.0);',
+    '  if (kind < 0.5 || (kind > 2.5 && kind < 3.5)) {',
+    '    float t = clamp(d / aux, 0.0, 1.0);',
+    '    vec3 e = kind < 0.5 ? vec3(40.0, 224.0, 255.0) / 255.0 : vColor;',
+    '    vec3 h = kind < 0.5 ? vec3(185.0, 255.0, 255.0) / 255.0 : mix(vColor, vec3(1.0), 0.7);',
+    '    vec3 c; float a;',
+    '    if (t < 0.25) { float k = t / 0.25; c = mix(h, e, k); a = mix(0.9, 0.55, k); }',
+    '    else { float k = (t - 0.25) / 0.75; c = e; a = mix(0.55, 0.0, k); }',
+    '    if (d >= aux) a = 0.0;',
+    '    o = vec4(c * a * al, a * al);',
+    '  } else if (kind < 1.5) {',
+    '    float a = al * exp(-(d - aux) * (d - aux) / 5.0);',
+    '    o = vec4(vColor * a, a);',
+    '  } else if (kind < 2.5) {',
+    '    float cov = clamp(3.1 - d + 0.5, 0.0, 1.0);',
+    '    float g = 0.085 * exp(-d * d / 112.5) * (1.0 - cov);',
+    '    vec3 cg = vec3(19.0, 242.0, 255.0) / 255.0; vec3 cc = vec3(164.0, 255.0, 255.0) / 255.0;',
+    '    o = vec4(min(vec3(1.0), cg * g + cc * cov), g + cov);',
+    '  }',
+    '  gl_FragColor = o;',
+    '}'
+  ].join('\n');
+
+  // the reference's soft ambient glow: radial gradient (0.35r -> 1.35r) painted over the stage
+  const GLOW_VS = 'void main(){ gl_Position = vec4(position.xy, 0.0, 1.0); }';
+  const GLOW_FS = [
+    'uniform vec2 uRes; uniform vec2 uCenter; uniform float uRad; uniform float uPR;',
+    'void main(){',
+    '  vec2 p = gl_FragCoord.xy / uPR; p.y = uRes.y - p.y;',
+    '  float t = clamp((length(p - uCenter) - uRad * 0.35) / uRad, 0.0, 1.0);',
+    '  vec3 c; float a;',
+    '  if (t < 0.65) { float k = t / 0.65; c = mix(vec3(0.0, 150.0, 210.0), vec3(0.0, 175.0, 220.0), k) / 255.0; a = mix(0.018, 0.04, k); }',
+    '  else { float k = (t - 0.65) / 0.35; c = mix(vec3(0.0, 175.0, 220.0) / 255.0, vec3(0.0), k); a = mix(0.04, 0.0, k); }',
+    '  gl_FragColor = vec4(c * a, a);',
+    '}'
+  ].join('\n');
+
+  /* ---------- shared scheduler: all instances advance on one clock so a compare view stays in lock-step ---------- */
+  const Scheduler = {
+    items: new Set(), raf: 0, last: 0,
+    add: function (g) { this.items.add(g); if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame(Scheduler.loop); } },
+    remove: function (g) { this.items.delete(g); },
+    loop: function (now) {
+      const S = Scheduler; S.raf = 0;
+      if (!S.items.size) return;
+      // dt is capped so a sleeping tab cannot cause a jump (0.25 s = at most ~2.4 deg of rotation), yet short stalls still catch up
+      const dt = Math.min(0.25, Math.max(0, (now - S.last) / 1000)); S.last = now;
+      S.items.forEach(function (g) { g._tick(dt); });
+      S.raf = requestAnimationFrame(S.loop);
+    }
+  };
+
+  // After a hidden tab becomes visible, restart the clock so the first frame does not carry the whole hidden interval.
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', function () { if (!document.hidden) Scheduler.last = performance.now(); });
+
+  /* ---------- helpers that need THREE ---------- */
+  // Every geometry gets its OWN quad attributes. Sharing BufferAttribute instances is a trap: geometry.dispose()
+  // deletes the GL buffers behind them, which silently breaks every other geometry still using them.
+  function quadShared() {
+    return {
+      lineCorners: new THREE.BufferAttribute(new Float32Array([0, -1, 0, 1, -1, 0, 1, 1, 0, 0, 1, 0]), 3),
+      spriteCorners: new THREE.BufferAttribute(new Float32Array([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0]), 3),
+      index: new THREE.BufferAttribute(new Uint16Array([0, 1, 2, 0, 2, 3]), 1)
+    };
+  }
+  function instAttr(arr, n, dynamic) { const a = new THREE.InstancedBufferAttribute(arr, n); if (dynamic) a.setUsage(THREE.DynamicDrawUsage); return a; }
+
+  function lineGeometry(seg, opts) {
+    opts = opts || {};
+    const g = new THREE.InstancedBufferGeometry(), Q = quadShared();
+    g.setAttribute('position', Q.lineCorners); g.setIndex(Q.index);
+    g.setAttribute('aA', instAttr(seg.a, 3, opts.dynamic));
+    g.setAttribute('aB', instAttr(seg.b, 3, opts.dynamic));
+    g.setAttribute('aAlpha', instAttr(seg.alpha || new Float32Array(seg.n).fill(1), 1, opts.dynamic));
+    if (opts.tint) g.setAttribute('aTint', instAttr(new Float32Array(seg.n * 3), 3, true));
+    g.instanceCount = seg.n;
+    return g;
+  }
+
+  class SpriteBatch {
+    constructor(cap, material) {
+      this.cap = cap; this.n = 0;
+      this.pos = new Float32Array(cap * 3); this.info = new Float32Array(cap * 4); this.col = new Float32Array(cap * 3);
+      const g = new THREE.InstancedBufferGeometry(), Q = quadShared();
+      g.setAttribute('position', Q.spriteCorners); g.setIndex(Q.index);
+      this.aPos = instAttr(this.pos, 3, true); this.aInfo = instAttr(this.info, 4, true); this.aCol = instAttr(this.col, 3, true);
+      g.setAttribute('aPos', this.aPos); g.setAttribute('aInfo', this.aInfo); g.setAttribute('aColor', this.aCol);
+      g.instanceCount = 0; this.geo = g;
+      this.mesh = new THREE.Mesh(g, material); this.mesh.frustumCulled = false;
+    }
+    begin() { this.n = 0; }
+    push(x, y, z, kind, extent, alpha, aux, r, g, b) {
+      if (this.n >= this.cap) return;
+      const i = this.n++;
+      this.pos[i * 3] = x; this.pos[i * 3 + 1] = y; this.pos[i * 3 + 2] = z;
+      this.info[i * 4] = kind; this.info[i * 4 + 1] = extent; this.info[i * 4 + 2] = alpha; this.info[i * 4 + 3] = aux;
+      this.col[i * 3] = r; this.col[i * 3 + 1] = g; this.col[i * 3 + 2] = b;
+    }
+    end() { this.geo.instanceCount = this.n; this.aPos.needsUpdate = this.aInfo.needsUpdate = this.aCol.needsUpdate = true; }
+    dispose() { this.geo.dispose(); }
+  }
+
+  const SEV_COLOR = { info: [40, 224, 255], notice: [120, 240, 255], warning: [240, 180, 41], critical: [255, 110, 110] };
+  function defaultMapper(e) {
+    const c = SEV_COLOR[e.severity] || SEV_COLOR.info;
+    return { color: [c[0] / 255, c[1] / 255, c[2] / 255], intensity: e.severity === 'info' ? 0.8 : 1 };
+  }
+
+  const ARC_SEG = 64;
+
+  /* ======================================================================== */
+  class GeoGlobe {
+    constructor(canvas, options) {
+      if (typeof THREE === 'undefined') { const e = new Error('Three.js is not loaded'); e.code = 'three-missing'; throw e; }
+      this.supported = true; this.canvas = canvas; this.disposed = false; this.lost = false; this.inView = true;
+      const T0 = performance.now(), tm = this.timing = {};   // start-up diagnostics: cumulative ms since the constructor began
+      const mark = function (k) { tm[k] = +(performance.now() - T0).toFixed(1); };
+      this.o = merge(clone(DEFAULTS), options || {});
+      const shapes = this.o.shapes || root.GLOBE_LAND_SHAPES;
+      if (!shapes) { const e = new Error('coastline data missing'); e.code = 'data-missing'; throw e; }
+      this.polys = GG.prepare(shapes); mark('prepare');
+
+      try {
+        this.renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true, premultipliedAlpha: true, powerPreference: 'high-performance' });
+      } catch (err) { const e = new Error('WebGL is not available'); e.code = 'webgl-unavailable'; e.cause = err; throw e; }
+      const r = this.renderer, gl = r.getContext();
+      r.autoClear = false; r.info.autoReset = false; r.setClearColor(0x000000, 0);
+      this.maxPoint = (gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE) || [1, 64])[1] || 64;
+      this.glInfo = { version: (typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) ? 'WebGL 2' : 'WebGL 1', renderer: gl.getParameter(gl.RENDERER), maxPoint: this.maxPoint };
+      mark('context');
+
+      this.state = { t: 0, angle: 0, pitchBase: 0, pitch: 0, yawOff: 0 };
+      this.pointer = { x: 0, y: 0 };
+      this.paused = this.o.animation === 'paused';
+      this.stats = { fps: 0, cpuMs: 0, calls: 0, points: 0, tris: 0, land: 0 };
+      this._fpsN = 0; this._fpsT = performance.now();
+      this.W = 1; this.H = 1; this.rad = 1; this.cx = 0; this.cy = 0;
+
+      this._initScenes(); mark('scenes');
+      this._buildLand(); mark('land');
+      this._buildWire(); this._buildGraticule(); this._buildRoutes(); this._buildEvents(); mark('geometry');
+      this.setOrientation(this.o.orientation.lon, this.o.orientation.lat);
+      this._applyVisibility();
+
+      // events / observers
+      this._onLost = (e) => { e.preventDefault(); this.lost = true; this._emit('lost'); };
+      this._onRestored = () => { this.lost = false; this._emit('restored'); this._draw(); };
+      canvas.addEventListener('webglcontextlost', this._onLost, false);
+      canvas.addEventListener('webglcontextrestored', this._onRestored, false);
+      this._bindPointer(); this._bindObservers(); this._applyReducedMotion(); mark('listeners');
+      this.resize(true, this.o.deferFirstDraw); mark('firstDraw');   // the first draw also compiles every shader program
+      this._ready = true;
+      if (this.o.deferFirstDraw) { mark('deferred'); this._firstDrawRaf = requestAnimationFrame(() => this._firstDraw()); }
+      else { this._probeShaders(); mark('probe'); this._schedule(); }
+    }
+    // Deferred start-up: the first draw (shader compilation) runs in its own task, in the next frame.
+    _firstDraw() {
+      this._firstDrawRaf = 0; if (this.disposed) return;
+      const t0 = performance.now();
+      try { this._probeShaders(); } catch (err) { this._fail(err); return; }
+      this.timing.firstDrawTask = +(performance.now() - t0).toFixed(1);
+      this._schedule(); this._emit('ready');
+    }
+    // A failure discovered after create() returned: become unsupported, release the context, and tell the host.
+    _fail(err) {
+      this.supported = false; this.reason = err.code || 'init-failed'; this.message = err.message; this.error = err;
+      try { this.dispose(); } catch (e) { }
+      this._emit('unsupported');
+    }
+
+    /* ----- scene graph ----- */
+    _initScenes() {
+      const U = this.U = {
+        uRes: { value: new THREE.Vector2(1, 1) }, uPR: { value: 1 }, uMaxPoint: { value: this.maxPoint },
+        uTwinkleT: { value: 0 }, uRing: { value: [0, 0, 0, 0, 0] },
+        uCenters: { value: GG.HUBS.map(function (h) { return new THREE.Vector2(h.lon, h.lat); }) },
+        uWrapLon: { value: this.o.geo.datelineWrap ? 1 : 0 }
+      };
+      const blend = { transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide, blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcColorFactor,
+        blendEquationAlpha: THREE.AddEquation, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor };   // == canvas 'screen' on premultiplied output
+      const col = function (r, g, b) { return { value: new THREE.Color().setRGB(r / 255, g / 255, b / 255) }; };
+      const mk = function (vs, fs, uniforms, extra) { return new THREE.ShaderMaterial(Object.assign({ vertexShader: vs, fragmentShader: fs, uniforms: uniforms }, blend, extra || {})); };
+      const line = function (width, alpha, r, g, b, extra) {
+        return mk(LINE_VS, LINE_FS, { uRes: U.uRes, uWidth: { value: width }, uAlpha: { value: alpha }, uMode: { value: 0 }, uZAlpha: { value: new THREE.Vector2(0.075, 0.21) }, uCullZ: { value: -10 }, uColor: col(r, g, b) }, extra);
+      };
+      const CY = [0, 175, 255];   // A2 palette: rgba(0,175,255)
+      const M = this.mats = {
+        land: mk(LAND_VS, DOT_FS, { uPR: U.uPR, uMaxPoint: U.uMaxPoint, uTwinkleT: U.uTwinkleT, uRing: U.uRing, uCenters: U.uCenters, uWrapLon: U.uWrapLon, uColor: col(CY[0], CY[1], CY[2]) }),
+        halo: mk(HALO_VS, DOT_FS, { uPR: U.uPR, uMaxPoint: U.uMaxPoint, uRing: U.uRing, uCenters: U.uCenters, uWrapLon: U.uWrapLon, uColor: col(166, 251, 255) }),
+        node: mk(NODE_VS, DOT_FS, { uPR: U.uPR, uMaxPoint: U.uMaxPoint, uColor: col(CY[0], CY[1], CY[2]) }),
+        grat: line(0.7, 1, CY[0], CY[1], CY[2]),
+        edge: line(0.65, 1, CY[0], CY[1], CY[2]),
+        route: line(0.9, 0.16, 43, 215, 255, null),
+        orbit: line(1.15, 0.23, CY[0], CY[1], CY[2]),
+        event: line(1.1, 1, 40, 224, 255, { defines: { USE_TINT: '' } }),
+        spriteW: mk(SPRITE_VS, SPRITE_FS, { uRes: U.uRes, uCullZ: { value: -0.1 } }),
+        spriteO: mk(SPRITE_VS, SPRITE_FS, { uRes: U.uRes, uCullZ: { value: -1000 } }),
+        glow: null
+      };
+      M.edge.uniforms.uMode.value = 1;
+      M.route.uniforms.uCullZ.value = -0.1;
+      M.event.uniforms.uCullZ.value = -0.1;
+      M.glow = mk(GLOW_VS, GLOW_FS, { uRes: U.uRes, uPR: U.uPR, uCenter: { value: new THREE.Vector2() }, uRad: { value: 1 } });
+
+      // 1) perspective world scene (real camera, set up in resize())
+      this.sceneW = new THREE.Scene(); this.camW = new THREE.PerspectiveCamera(20, 1, 0.1, 50); this.camW.position.set(0, 0, CAM_DIST);
+      this.globe = new THREE.Group(); this.sceneW.add(this.globe);
+      // 2) orthographic scene that reproduces the reference's un-perspective'd graticule (alignment: 'reference')
+      this.sceneR = new THREE.Scene(); this.camR = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 50); this.camR.position.set(0, 0, 10);
+      this.globeR = new THREE.Group(); this.sceneR.add(this.globeR);
+      // 3) screen-space overlay (pixel coordinates, y down): ambient glow, orbital rings and dots
+      this.sceneO = new THREE.Scene(); this.camO = new THREE.OrthographicCamera(0, 1, 0, 1, 0.1, 50); this.camO.position.set(0, 0, 5);
+      const gq = new THREE.BufferGeometry(); gq.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0]), 3)); gq.setIndex(quadShared().index);
+      this.glowMesh = new THREE.Mesh(gq, M.glow); this.glowMesh.frustumCulled = false; this.sceneO.add(this.glowMesh);
+      this.spritesW = new SpriteBatch(160, M.spriteW); this.globe.add(this.spritesW.mesh);
+      this.spritesO = new SpriteBatch(8, M.spriteO); this.sceneO.add(this.spritesO.mesh);
+    }
+    _add(obj, group) { obj.frustumCulled = false; (group || this.globe).add(obj); return obj; }
+
+    _buildLand() {
+      const G = this.o.geo;
+      if (this.landPts) { this.globe.remove(this.landPts, this.haloPts); this.landPts.geometry.dispose(); this.haloPts.geometry.dispose(); }
+      const L = this.land = GG.buildLand(this.polys, { distribution: G.distribution, density: this.o.density });
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(L.pos, 3)); g.setAttribute('aLL', new THREE.BufferAttribute(L.ll, 2)); g.setAttribute('aPhase', new THREE.BufferAttribute(L.phase, 1));
+      const m = Math.ceil(L.count / 9), p9 = new Float32Array(m * 3), l9 = new Float32Array(m * 2), f9 = new Float32Array(m);
+      for (let k = 0; k < m; k++) { const i = k * 9; p9.set(L.pos.subarray(i * 3, i * 3 + 3), k * 3); l9.set(L.ll.subarray(i * 2, i * 2 + 2), k * 2); f9[k] = L.phase[i]; }
+      const h = new THREE.BufferGeometry();   // the reference adds a halo to every 9th dot only
+      h.setAttribute('position', new THREE.BufferAttribute(p9, 3)); h.setAttribute('aLL', new THREE.BufferAttribute(l9, 2)); h.setAttribute('aPhase', new THREE.BufferAttribute(f9, 1));
+      this.landPts = this._add(new THREE.Points(g, this.mats.land)); this.haloPts = this._add(new THREE.Points(h, this.mats.halo));
+      this.stats.land = L.count;
+    }
+    _buildWire() {
+      if (this.wirePts) { this.globe.remove(this.wirePts, this.wireEdges); this.wirePts.geometry.dispose(); this.wireEdges.geometry.dispose(); }
+      const W = this.wire = GG.buildWire(this.o.wireNodes);
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(W.pos, 3));
+      this.wirePts = this._add(new THREE.Points(g, this.mats.node));
+      this.wireEdges = this._add(new THREE.Mesh(lineGeometry(W), this.mats.edge));
+    }
+    _buildGraticule() {
+      [this.gratW, this.gratR].forEach(function (m) { if (m) { m.parent.remove(m); } });
+      if (this.gratGeo) this.gratGeo.dispose();
+      this.gratGeo = lineGeometry(GG.graticule(this.o.geo.meridians));
+      this.gratW = this._add(new THREE.Mesh(this.gratGeo, this.mats.grat), this.globe);
+      this.gratR = this._add(new THREE.Mesh(this.gratGeo, this.mats.grat), this.globeR);
+    }
+    _buildRoutes() {
+      this.routeArcs = GG.ROUTES.map(function (r) { const a = GG.HUBS[r[0]], b = GG.HUBS[r[1]]; return GG.arcFn(a.lon, a.lat, b.lon, b.lat); });
+      const n = 90, A = [], B = [];
+      this.routeArcs.forEach(function (arc) { const s = GG.arcSegments(arc, n, 0.12); A.push(s.a); B.push(s.b); });
+      const cat = function (parts) { const out = new Float32Array(parts.length * n * 3); parts.forEach(function (p, i) { out.set(p, i * n * 3); }); return out; };
+      this.routeMesh = this._add(new THREE.Mesh(lineGeometry({ a: cat(A), b: cat(B), n: n * this.routeArcs.length }), this.mats.route));
+    }
+    _buildEvents() {
+      const T = this.o.telemetry, N = T.maxArcs * ARC_SEG;
+      const seg = { a: new Float32Array(N * 3), b: new Float32Array(N * 3), alpha: new Float32Array(N), n: N };
+      this.evGeo = lineGeometry(seg, { dynamic: true, tint: true });
+      this.evMesh = this._add(new THREE.Mesh(this.evGeo, this.mats.event));
+      this.ev = { arcs: new Array(T.maxArcs).fill(null), rings: [], accepted: 0, dropped: 0, ignored: 0 };
+      this.mapper = T.mapper || defaultMapper;
+    }
+    _buildOrbits() {
+      if (this.orbitMesh) { this.sceneO.remove(this.orbitMesh); this.orbitMesh.geometry.dispose(); }
+      const A = [], B = [], n = 240, rad = this.rad, cx = this.cx, cy = this.cy;
+      this.orbitGeom = [];
+      for (let orbit = 0; orbit < 4; orbit++) {
+        const tilt = 0.2 + orbit * 0.43, r = rad * (1.1 + orbit * 0.08), ct = Math.cos(tilt), st = Math.sin(tilt);
+        this.orbitGeom.push({ r: r, ct: ct, st: st });
+        const pt = function (j) { const q = j / n * TAU + orbit * 0.2, x = Math.cos(q) * r, y = Math.sin(q) * r * 0.42; return [cx + x * ct - y * st, cy + x * st + y * ct, 0]; };
+        for (let j = 0; j < n; j++) { A.push(pt(j)); B.push(pt(j + 1)); }
+      }
+      const N = A.length, a = new Float32Array(N * 3), b = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) { a.set(A[i], i * 3); b.set(B[i], i * 3); }
+      this.orbitMesh = this._add(new THREE.Mesh(lineGeometry({ a: a, b: b, n: N }), this.mats.orbit), this.sceneO);
+      this.orbitMesh.visible = this.o.orbits;
+    }
+    _applyVisibility() {
+      const o = this.o, reg = o.geo.alignment !== 'reference';
+      this.gratW.visible = reg; this.gratR.visible = !reg;
+      this.routeMesh.visible = o.traffic.mode === 'reference';
+      this.evMesh.visible = o.traffic.mode === 'telemetry';
+      if (this.orbitMesh) this.orbitMesh.visible = o.orbits;
+      this.U.uWrapLon.value = o.geo.datelineWrap ? 1 : 0;
+    }
+    _probeShaders() {
+      // After the first draw, make sure every program compiled; if not, report instead of showing a blank canvas.
+      this._draw();
+      const bad = [];
+      (this.renderer.info.programs || []).forEach(function (p) { if (p.diagnostics && p.diagnostics.runnable === false) bad.push(p.name || 'program'); });
+      if (bad.length) { const e = new Error('Shader compile failed: ' + bad.join(', ')); e.code = 'shader-error'; throw e; }
+    }
+
+    /* ----- options / API ----- */
+    update(patch) {
+      const o = this.o, was = { dist: o.geo.distribution, dens: o.density, mer: o.geo.meridians, wire: o.wireNodes, traffic: o.traffic.mode };
+      merge(o, patch || {});
+      if (patch && patch.orientation) this.setOrientation(o.orientation.lon, o.orientation.lat);
+      if (patch && patch.layout !== undefined) this.resize(true);
+      if (patch && patch.animation) this.paused = o.animation === 'paused';
+      if (patch && patch.reducedMotion !== undefined) this._applyReducedMotion();
+      if (o.geo.distribution !== was.dist || o.density !== was.dens) this._buildLand();
+      if (o.geo.meridians !== was.mer) this._buildGraticule();
+      if (o.wireNodes !== was.wire) this._buildWire();
+      if (o.traffic.mode !== was.traffic) this._clearEvents();
+      if (patch && patch.telemetry && patch.telemetry.mapper) this.mapper = patch.telemetry.mapper;
+      this._applyVisibility(); this._schedule();
+      if (this.static) this._draw();
+      return this;
+    }
+    setOrientation(lon, lat) {
+      const s = this.state; this.o.orientation = { lon: lon, lat: lat };
+      s.angle = (((lon - 90) * D2R) % TAU + TAU) % TAU; s.pitchBase = lat * D2R; s.pitch = s.pitchBase;
+      if (this.static) this._draw();
+    }
+    setPaused(p) { this.paused = !!p; this.o.animation = p ? 'paused' : 'running'; this._schedule(); if (this.static) this._draw(); }
+    setSpeed(x) { this.o.speed = x; }
+    setDensity(x) { this.update({ density: x }); }
+    getState() { return { t: this.state.t, angle: this.state.angle, pitch: this.state.pitch, yawOff: this.state.yawOff }; }
+    setState(s) { Object.assign(this.state, s); }
+    get mode() { return this.lost ? 'context lost' : this.static ? 'static' : this.paused ? 'paused' : 'running'; }
+    on(fn) { this._listener = fn; }
+    _emit(type) { if (this._listener) try { this._listener(type, this); } catch (e) { } }
+
+    /* ----- reduced motion ----- */
+    _applyReducedMotion() {
+      const pref = this.o.reducedMotion;
+      if (!this._mq && typeof matchMedia === 'function') {
+        this._mq = matchMedia(REDUCED_Q);
+        this._mqFn = () => { this._applyReducedMotion(); };
+        if (this._mq.addEventListener) this._mq.addEventListener('change', this._mqFn); else if (this._mq.addListener) this._mq.addListener(this._mqFn);
+      }
+      const osReduce = !!(this._mq && this._mq.matches);
+      this.reducedOS = osReduce;
+      this.static = pref === 'reduce' || (pref === 'auto' && osReduce);
+      if (this.static) { this.pointer.x = this.pointer.y = 0; this.state.yawOff = 0; this.state.pitch = this.state.pitchBase; this.state.t = 0; this._clearEvents(); }
+      this._schedule(); if (this._ready) this._draw();
+    }
+    _schedule() {
+      if (this.disposed) return;
+      if (this.static) Scheduler.remove(this); else Scheduler.add(this);
+    }
+
+    /* ----- pointer ----- */
+    _bindPointer() {
+      const t = this.o.pointer.target || this.canvas.parentElement || this.canvas;
+      this._ptTarget = t;
+      this._onMove = (e) => {
+        if (this.static) return;
+        const r = t.getBoundingClientRect(); if (!r.width || !r.height) return;
+        // Measure the pointer against the globe's own column (approved behaviour: the stage), not the whole target.
+        const A = this.o.pointer.area, aw = A ? r.width * A.w : r.width, ah = A ? r.height * (A.h == null ? 1 : A.h) : r.height;
+        if (!(aw > 0) || !(ah > 0)) return;
+        const nx = (e.clientX - (A ? r.left + r.width * A.x : r.left)) / aw - 0.5, ny = (e.clientY - (A ? r.top + r.height * (A.y || 0) : r.top)) / ah - 0.5;
+        if (Math.abs(nx) > 0.52 || Math.abs(ny) > 0.52) { this.pointer.x = 0; this.pointer.y = 0; return; }   // outside the area: no influence
+        this.pointer.x = Math.max(-0.5, Math.min(0.5, nx)); this.pointer.y = Math.max(-0.5, Math.min(0.5, ny));
+      };
+      this._onLeave = () => { this.pointer.x = 0; this.pointer.y = 0; };
+      t.addEventListener('pointermove', this._onMove, { passive: true });
+      t.addEventListener('pointerleave', this._onLeave, { passive: true });
+      t.addEventListener('pointercancel', this._onLeave, { passive: true });
+      this._onUp = (e) => { if (e.pointerType === 'touch') this._onLeave(); };
+      t.addEventListener('pointerup', this._onUp, { passive: true });
+    }
+    _bindObservers() {
+      const host = this.canvas.parentElement || this.canvas;
+      if (typeof ResizeObserver === 'function') { this._ro = new ResizeObserver(() => this.resize()); this._ro.observe(host); }
+      else { this._onWinResize = () => this.resize(); window.addEventListener('resize', this._onWinResize); }
+      if (typeof IntersectionObserver === 'function') { this._io = new IntersectionObserver((es) => { this.inView = es[0].isIntersecting; }, { threshold: 0 }); this._io.observe(this.canvas); }
+      // Restored from the back/forward cache: re-fit and redraw (the page may have resized while frozen).
+      this._onPageShow = (e) => { if (e.persisted) this.resize(true); };
+      window.addEventListener('pageshow', this._onPageShow);
+    }
+
+    /* ----- layout ----- */
+    resize(force, noDraw) {
+      const host = this.canvas, w = Math.max(1, Math.round(host.clientWidth)), h = Math.max(1, Math.round(host.clientHeight));
+      const pr = Math.min(window.devicePixelRatio || 1, this.o.maxPixelRatio);
+      if (!force && w === this.W && h === this.H && pr === this.renderer.getPixelRatio()) return;
+      this.W = w; this.H = h;
+      const L = this.o.layout;
+      if (typeof L === 'function') { const g = L(w, h) || {}; this.rad = Math.max(1, g.rad || 1); this.cx = g.cx; this.cy = g.cy; }
+      else { this.rad = Math.min(w * L.radiusW, h * L.radiusH); this.cx = w * L.cx; this.cy = h * L.cy; }
+      this.renderer.setPixelRatio(pr); this.renderer.setSize(w, h, false);
+      this.U.uRes.value.set(w, h); this.U.uPR.value = pr;
+      const c = this.camW;   // real perspective camera: 1 world unit = `rad` px at the sphere's centre plane; optical axis through (cx, cy)
+      c.fov = 2 * Math.atan(h / (2 * this.rad * CAM_DIST)) / D2R; c.aspect = w / h;
+      c.setViewOffset(w, h, w / 2 - this.cx, h / 2 - this.cy, w, h); c.updateProjectionMatrix();
+      const r = this.camR; r.left = -this.cx / this.rad; r.right = (w - this.cx) / this.rad; r.top = this.cy / this.rad; r.bottom = -(h - this.cy) / this.rad; r.updateProjectionMatrix();
+      const o = this.camO; o.left = 0; o.right = w; o.top = 0; o.bottom = h; o.updateProjectionMatrix();
+      this.mats.glow.uniforms.uCenter.value.set(this.cx, this.cy); this.mats.glow.uniforms.uRad.value = this.rad;
+      this._buildOrbits();
+      if ((this.static || this.paused || force) && !noDraw) this._draw();
+    }
+
+    /* ----- per-frame ----- */
+    _tick(dt) {
+      if (this.disposed || this.lost || !this.inView || document.hidden) return;
+      const t0 = performance.now();
+      this._advance(dt); this._draw();
+      this.stats.cpuMs += (performance.now() - t0 - this.stats.cpuMs) * 0.1;
+      this._fpsN++; const now = performance.now();
+      if (now - this._fpsT >= 500) { this.stats.fps = this._fpsN * 1000 / (now - this._fpsT); this._fpsN = 0; this._fpsT = now; }
+    }
+    _advance(dt) {
+      const o = this.o, s = this.state, P = o.pointer, sp = o.speed;
+      if (!this.paused) { s.t += 0.96 * sp * dt; s.angle += o.rotationSpeed * D2R * sp * dt; }
+      const px = this.pointer.x, py = this.pointer.y;
+      if (P.mode === 'reference') {   // approved behaviour: yaw follows the pointer instantly; pitch eases 2.5% per 60 Hz frame (only while running)
+        s.yawOff = px * P.yaw;
+        if (!this.paused) s.pitch += (s.pitchBase + py * P.pitch - s.pitch) * (1 - Math.pow(1 - 0.025, dt * 60));
+      } else {                         // smooth: exponential easing, independent of frame rate
+        s.yawOff += (px * P.yaw - s.yawOff) * (1 - Math.exp(-dt / P.yawTau));
+        s.pitch += (s.pitchBase + py * P.pitch - s.pitch) * (1 - Math.exp(-dt / P.pitchTau));
+      }
+      this._updateEvents(this.paused ? 0 : dt * sp);
+    }
+    _applyPose() {
+      const s = this.state;
+      this.globe.rotation.set(s.pitch, -(s.angle + s.yawOff), 0, 'XYZ'); this.globeR.rotation.copy(this.globe.rotation);
+    }
+    _draw() {
+      if (this.disposed || this.lost) return;
+      const s = this.state, U = this.U, r = this.renderer;
+      this._applyPose();
+      U.uTwinkleT.value = (s.t * 0.65) % TAU;
+      for (let k = 0; k < 5; k++) U.uRing.value[k] = (s.t * 13 + k * 9) % 47;
+      this._fillSprites();
+      r.info.reset(); r.setClearColor(0x000000, 0); r.clear();
+      if (this.o.geo.alignment === 'reference') r.render(this.sceneR, this.camR);
+      r.render(this.sceneW, this.camW);
+      r.render(this.sceneO, this.camO);
+      const i = r.info.render; this.stats.calls = i.calls; this.stats.points = i.points; this.stats.tris = i.triangles;
+    }
+    renderNow() { this._draw(); }
+
+    _fillSprites() {
+      const s = this.state, o = this.o, W = this.spritesW, O = this.spritesO;
+      W.begin();
+      if (o.traffic.mode === 'reference') {            // 2 packets per route, 13 px halo, 8.3 s per traversal at speed 1 (as approved)
+        const per = o.traffic.packetsPerRoute;
+        for (let ri = 0; ri < this.routeArcs.length; ri++) for (let k = 0; k < per; k++) {
+          const u = (s.t * o.traffic.packetSpeed + ri * 0.19 + k * 0.48) % 1, p = this.routeArcs[ri].at(u, 0.12);
+          W.push(p[0], p[1], p[2], 0, 13, 1, 13, 1, 1, 1);
+        }
+      } else if (o.traffic.mode === 'telemetry') this._eventSprites(W);
+      W.end();
+      O.begin();
+      if (o.orbits && !this.paused && !this.static) {  // orbit dots are hidden while paused, as in the reference
+        for (let orbit = 0; orbit < 4; orbit++) {
+          const g = this.orbitGeom[orbit], q = (s.t * (0.18 + orbit * 0.04) + orbit * 1.4) % TAU, x = Math.cos(q) * g.r, y = Math.sin(q) * g.r * 0.42;
+          O.push(this.cx + x * g.ct - y * g.st, this.cy + x * g.st + y * g.ct, 0, 2, 26, 1, 0, 1, 1, 1);
+        }
+      }
+      O.end();
+    }
+
+    /* ----- telemetry events -> visuals (renderer only sees normalised events) ----- */
+    ingestEvent(e) {
+      const T = this.o.telemetry, E = this.ev;
+      if (this.o.traffic.mode !== 'telemetry' || this.static || this.paused || !e || (!e.source && !e.destination)) { E.ignored++; return false; }
+      const m = this.mapper(e), col = m.color;
+      if (e.source && e.destination) {
+        const i = E.arcs.indexOf(null); if (i < 0) { E.dropped++; return false; }
+        const arc = GG.arcFn(e.source.lon, e.source.lat, e.destination.lon, e.destination.lat);
+        const lift = 0.12 * Math.min(1, Math.max(0.3, arc.omega / 1.2));
+        const seg = GG.arcSegments(arc, ARC_SEG, lift), a = this.evGeo.attributes;
+        a.aA.array.set(seg.a, i * ARC_SEG * 3); a.aB.array.set(seg.b, i * ARC_SEG * 3);
+        for (let j = 0; j < ARC_SEG; j++) { a.aTint.array[(i * ARC_SEG + j) * 3] = col[0]; a.aTint.array[(i * ARC_SEG + j) * 3 + 1] = col[1]; a.aTint.array[(i * ARC_SEG + j) * 3 + 2] = col[2]; }
+        a.aA.needsUpdate = a.aB.needsUpdate = a.aTint.needsUpdate = true;
+        E.arcs[i] = { arc: arc, lift: lift, col: col, k: m.intensity, age: 0, travel: 2.6 + arc.omega * 1.2, arrived: false, dest: e.destination };
+      } else {
+        const p = e.source || e.destination, big = e.severity === 'critical' || e.severity === 'warning';
+        this._pushRing(p.lon, p.lat, col, big ? 40 : 28, big ? 3.2 : 2.2, m.intensity);
+      }
+      E.accepted++; return true;
+    }
+    _pushRing(lon, lat, col, maxPx, dur, k) {
+      const R = this.ev.rings; if (R.length >= this.o.telemetry.maxRings) R.shift();
+      R.push({ pos: GG.unit(lon, lat, 1.01), col: col, maxPx: maxPx, dur: dur, k: k, age: 0 });
+    }
+    _updateEvents(dt) {
+      const E = this.ev; if (!E) return;
+      let any = false;
+      for (let i = 0; i < E.arcs.length; i++) {
+        const A = E.arcs[i]; if (!A) continue;
+        A.age += dt;
+        if (!A.arrived && A.age >= A.travel) { A.arrived = true; this._pushRing(A.dest.lon, A.dest.lat, A.col, 18, 1.1, A.k); }
+        const fade = A.age > A.travel ? Math.max(0, 1 - (A.age - A.travel) / 1.4) : 1;
+        if (fade <= 0) { E.arcs[i] = null; this.evGeo.attributes.aAlpha.array.fill(0, i * ARC_SEG, (i + 1) * ARC_SEG); this.evGeo.attributes.aAlpha.needsUpdate = true; continue; }
+        const head = Math.min(1, A.age / A.travel), arr = this.evGeo.attributes.aAlpha.array;
+        for (let j = 0; j < ARC_SEG; j++) {
+          const u = (j + 0.5) / ARC_SEG; let a = 0.1;
+          if (u <= head) { const k = 1 - (head - u) / 0.28; if (k > 0) a += 0.55 * k * k; }
+          arr[i * ARC_SEG + j] = a * fade * A.k;
+        }
+        this.evGeo.attributes.aAlpha.needsUpdate = true; any = true;
+      }
+      for (let i = E.rings.length - 1; i >= 0; i--) { E.rings[i].age += dt; if (E.rings[i].age >= E.rings[i].dur) E.rings.splice(i, 1); }
+      return any;
+    }
+    _eventSprites(W) {
+      const E = this.ev;
+      for (let i = 0; i < E.arcs.length; i++) {
+        const A = E.arcs[i]; if (!A || A.age >= A.travel) continue;
+        const p = A.arc.at(A.age / A.travel, A.lift), c = A.col;
+        W.push(p[0], p[1], p[2], 3, 11, A.k, 8, c[0], c[1], c[2]);
+      }
+      for (let i = 0; i < E.rings.length; i++) {
+        const R = E.rings[i], u = R.age / R.dur, rad = 3 + (R.maxPx - 3) * (1 - Math.pow(1 - u, 2)), al = R.k * 0.7 * Math.pow(1 - u, 1.5);
+        W.push(R.pos[0], R.pos[1], R.pos[2], 1, rad + 10, al, rad, R.col[0], R.col[1], R.col[2]);
+      }
+    }
+    _clearEvents() {
+      const E = this.ev; if (!E) return;
+      E.arcs.fill(null); E.rings.length = 0; this.evGeo.attributes.aAlpha.array.fill(0); this.evGeo.attributes.aAlpha.needsUpdate = true;
+    }
+
+    /* ----- debug / test helpers ----- */
+    project(lon, lat, r) {   // CSS-pixel position through the real camera + rotation (used by parity checks)
+      this._applyPose(); this.globe.updateMatrixWorld(true); this.camW.updateMatrixWorld(true);
+      const p = GG.unit(lon, lat, r == null ? GG.LAND_R : r), v = new THREE.Vector3(p[0], p[1], p[2]).applyMatrix4(this.globe.matrixWorld);
+      const z = v.z; v.project(this.camW);
+      return { x: (v.x * 0.5 + 0.5) * this.W, y: (1 - (v.y * 0.5 + 0.5)) * this.H, z: z };
+    }
+    loseContext(restoreAfterMs) {
+      const ext = this.renderer.getContext().getExtension('WEBGL_lose_context'); if (!ext) return false;
+      ext.loseContext(); if (restoreAfterMs != null) setTimeout(function () { ext.restoreContext(); }, restoreAfterMs); return true;
+    }
+
+    dispose() {
+      if (this.disposed) return; this.disposed = true; Scheduler.remove(this);
+      const c = this.canvas; c.removeEventListener('webglcontextlost', this._onLost); c.removeEventListener('webglcontextrestored', this._onRestored);
+      const t = this._ptTarget; if (t) { t.removeEventListener('pointermove', this._onMove); t.removeEventListener('pointerleave', this._onLeave); t.removeEventListener('pointercancel', this._onLeave); t.removeEventListener('pointerup', this._onUp); }
+      if (this._ro) this._ro.disconnect(); if (this._io) this._io.disconnect(); if (this._onWinResize) window.removeEventListener('resize', this._onWinResize);
+      if (this._onPageShow) window.removeEventListener('pageshow', this._onPageShow);
+      if (this._firstDrawRaf) cancelAnimationFrame(this._firstDrawRaf);
+      if (this._mq) { if (this._mq.removeEventListener) this._mq.removeEventListener('change', this._mqFn); else if (this._mq.removeListener) this._mq.removeListener(this._mqFn); }
+      [this.sceneW, this.sceneR, this.sceneO].forEach(function (sc) { sc.traverse(function (o) { if (o.geometry) o.geometry.dispose(); }); });
+      Object.keys(this.mats).forEach((k) => this.mats[k].dispose());
+      this.renderer.dispose(); this.renderer.forceContextLoss();
+    }
+  }
+
+  // Never throws: on any failure returns an inert object with supported:false and a reason code.
+  // Note: dispose() releases the GL context for good, so create() needs a NEW canvas element afterwards.
+  function create(canvas, options) {
+    try { return new GeoGlobe(canvas, options); }
+    catch (err) {
+      const noop = function () { return stub; };
+      const stub = { supported: false, reason: err.code || 'init-failed', message: err.message, error: err, mode: 'unsupported', stats: { fps: 0, cpuMs: 0, calls: 0, points: 0, tris: 0, land: 0 }, glInfo: null,
+        update: noop, setOrientation: noop, setPaused: noop, setSpeed: noop, setDensity: noop, getState: function () { return {}; }, setState: noop, ingestEvent: function () { return false; }, on: noop, renderNow: noop, resize: noop, dispose: noop, loseContext: function () { return false; } };
+      try { if (canvas && canvas.getContext) { /* leave the canvas untouched so the host's CSS fallback shows */ } } catch (e) { }
+      return stub;
+    }
+  }
+  root.GeoGlobe = { create: create, defaults: DEFAULTS, version: '0.1.0-prototype' };
+})(globalThis);
+</script>
+<script data-module="data">
+/* Natural Earth low-resolution country geometry, copied unchanged from the approved A2 v9 reference (113 polygons). */
+globalThis.GLOBE_LAND_SHAPES=[
+[[-78.18,8.32],[-79.12,9.0],[-79.56,8.93],[-80.48,8.09],[-80.0,7.55],[-80.89,7.22],[-81.06,7.82],[-81.52,7.71],[-81.72,8.11],[-82.85,8.07],[-83.51,8.45],[-83.63,9.05],[-84.98,10.09],[-85.11,9.56],[-85.66,9.93],[-85.66,10.75],[-85.94,10.9],[-85.71,11.09],[-87.67,12.91],[-87.32,12.98],[-87.49,13.3],[-88.48,13.16],[-91.23,13.93],[-93.36,15.62],[-94.69,16.2],[-96.56,15.65],[-103.5,18.29],[-105.49,19.95],[-105.73,20.43],[-105.4,20.53],[-105.27,21.42],[-106.03,22.77],[-108.4,25.17],[-109.26,25.58],[-109.29,26.44],[-110.39,27.16],[-110.64,27.86],[-111.18,27.94],[-112.23,28.95],[-113.15,31.17],[-114.78,31.8],[-114.67,30.16],[-111.62,26.66],[-110.66,24.3],[-110.17,24.27],[-109.43,23.19],[-110.03,22.82],[-110.3,23.43],[-112.18,24.74],[-112.3,26.01],[-115.06,27.72],[-114.57,27.74],[-114.16,28.57],[-115.52,29.56],[-117.3,33.05],[-118.52,34.03],[-120.62,34.61],[-124.4,40.31],[-124.21,42.0],[-124.53,42.77],[-123.9,45.52],[-124.69,48.18],[-123.12,48.04],[-122.59,47.1],[-122.34,47.36],[-122.84,49.0],[-125.62,50.42],[-127.44,50.83],[-127.99,51.72],[-127.85,52.33],[-129.13,52.76],[-129.31,53.56],[-130.51,54.29],[-130.54,54.8],[-131.97,55.5],[-132.25,56.37],[-133.54,57.18],[-134.08,58.12],[-136.63,58.21],[-139.87,59.54],[-142.57,60.08],[-143.96,60.0],[-147.11,60.88],[-148.22,60.67],[-148.02,59.98],[-151.72,59.16],[-151.86,59.74],[-151.41,60.73],[-150.35,61.03],[-150.62,61.28],[-154.02,59.35],[-153.29,58.86],[-154.23,58.15],[-156.31,57.42],[-156.56,56.98],[-158.12,56.46],[-158.43,55.99],[-164.79,54.4],[-164.94,54.57],[-161.8,55.89],[-160.56,56.01],[-157.72,57.57],[-157.04,58.92],[-158.52,58.79],[-159.06,58.42],[-159.71,58.93],[-159.98,58.57],[-160.36,59.07],[-161.97,58.67],[-161.87,59.63],[-162.52,59.99],[-163.82,59.8],[-165.35,60.51],[-165.35,61.07],[-166.12,61.5],[-165.73,62.07],[-164.56,63.15],[-163.07,63.06],[-162.26,63.54],[-160.77,63.77],[-160.96,64.22],[-161.52,64.4],[-160.78,64.79],[-162.76,64.34],[-164.96,64.45],[-166.43,64.69],[-168.11,65.67],[-164.47,66.58],[-163.65,66.58],[-163.79,66.08],[-161.68,66.12],[-165.39,68.04],[-166.76,68.36],[-166.2,68.88],[-164.43,68.92],[-163.17,69.37],[-162.93,69.86],[-161.91,70.33],[-158.12,70.82],[-156.58,71.36],[-155.07,71.15],[-154.34,70.7],[-152.21,70.83],[-152.27,70.6],[-150.74,70.43],[-143.59,70.15],[-136.5,68.9],[-134.41,69.63],[-132.93,69.51],[-129.79,70.19],[-129.11,69.78],[-128.36,70.01],[-128.14,70.48],[-125.76,69.48],[-124.42,70.16],[-124.29,69.4],[-122.68,69.86],[-121.47,69.8],[-117.6,69.01],[-115.25,68.91],[-113.9,68.4],[-115.3,67.9],[-113.5,67.69],[-109.95,67.98],[-108.88,67.38],[-107.79,67.89],[-108.81,68.31],[-108.17,68.65],[-106.15,68.8],[-104.34,68.02],[-103.22,68.1],[-101.45,67.65],[-98.44,67.78],[-98.56,68.4],[-97.67,68.58],[-96.12,68.24],[-96.13,67.29],[-95.49,68.09],[-94.69,68.06],[-94.23,69.07],[-96.47,70.09],[-96.39,71.19],[-95.21,71.92],[-93.89,71.76],[-91.52,70.19],[-92.41,69.7],[-90.55,69.5],[-90.55,68.47],[-89.22,69.26],[-88.02,68.62],[-88.32,67.87],[-87.35,67.2],[-85.58,68.78],[-85.52,69.88],[-82.62,69.66],[-81.28,69.16],[-81.22,68.67],[-81.96,68.13],[-81.26,67.6],[-81.39,67.11],[-83.34,66.41],[-84.74,66.26],[-85.77,66.56],[-87.32,64.78],[-88.48,64.1],[-89.91,64.03],[-90.7,63.61],[-90.77,62.96],[-91.93,62.84],[-94.24,60.9],[-94.68,58.95],[-93.22,58.78],[-92.3,57.09],[-90.9,57.28],[-85.01,55.3],[-82.27,55.15],[-82.44,54.28],[-82.13,53.28],[-81.4,52.16],[-79.91,51.21],[-79.14,51.53],[-78.6,52.56],[-79.12,54.14],[-79.83,54.67],[-78.23,55.14],[-76.54,56.53],[-76.62,57.2],[-77.3,58.05],[-78.52,58.8],[-77.34,59.85],[-78.11,62.32],[-77.41,62.55],[-74.67,62.18],[-73.84,62.44],[-71.37,61.14],[-69.59,61.06],[-69.29,58.96],[-68.37,58.8],[-67.65,58.21],[-66.2,58.77],[-64.58,60.34],[-61.4,56.97],[-61.8,56.34],[-59.57,55.2],[-57.33,54.63],[-56.94,53.78],[-55.76,53.27],[-55.68,52.15],[-58.77,51.06],[-60.03,50.24],[-66.4,50.23],[-67.24,49.51],[-68.51,49.07],[-71.1,46.82],[-70.26,46.99],[-68.65,48.3],[-66.55,49.13],[-65.06,49.23],[-64.17,48.74],[-65.12,48.07],[-64.47,46.24],[-63.17,45.74],[-61.52,45.88],[-60.52,47.01],[-60.45,46.28],[-59.8,45.92],[-64.25,44.27],[-65.36,43.55],[-66.12,43.62],[-66.16,44.47],[-64.43,45.29],[-67.14,45.14],[-66.96,44.81],[-70.12,43.68],[-70.65,43.09],[-70.82,42.33],[-70.49,41.81],[-70.08,41.78],[-70.19,42.15],[-69.88,41.92],[-69.97,41.64],[-73.71,40.93],[-71.94,40.93],[-73.95,40.75],[-74.26,40.47],[-73.96,40.43],[-74.18,39.71],[-74.91,38.94],[-75.53,39.5],[-75.06,38.4],[-75.94,37.22],[-75.72,37.94],[-76.23,38.32],[-76.35,39.15],[-76.33,38.08],[-76.99,38.24],[-76.3,37.92],[-75.73,35.55],[-76.36,34.81],[-79.06,33.49],[-81.34,31.44],[-81.31,30.04],[-80.06,26.88],[-80.38,25.21],[-81.17,25.2],[-81.71,25.87],[-82.86,27.89],[-82.65,28.55],[-83.71,29.94],[-84.1,30.09],[-85.11,29.64],[-86.4,30.4],[-89.59,30.16],[-89.41,29.16],[-90.88,29.15],[-91.63,29.68],[-93.85,29.71],[-96.59,28.31],[-97.37,27.38],[-97.14,25.87],[-97.53,25.84],[-97.14,25.87],[-97.87,22.44],[-97.19,20.64],[-95.9,18.83],[-94.43,18.14],[-91.41,18.88],[-90.77,19.28],[-90.28,21.0],[-87.05,21.54],[-86.85,20.85],[-87.62,19.65],[-87.84,18.26],[-88.3,18.5],[-88.36,16.53],[-88.93,15.89],[-88.12,15.69],[-84.98,16.0],[-83.41,15.27],[-83.18,14.31],[-83.81,11.1],[-82.21,9.0],[-80.95,8.86],[-79.57,9.61],[-76.84,8.64],[-75.67,9.44],[-75.48,10.62],[-74.91,11.08],[-73.41,11.23],[-71.75,12.44],[-71.14,12.11],[-71.36,11.54],[-71.95,11.42],[-71.63,10.45],[-72.07,9.87],[-71.7,9.07],[-71.26,9.14],[-71.04,9.86],[-71.4,10.97],[-70.16,11.38],[-70.29,11.85],[-69.94,12.16],[-69.58,11.46],[-68.88,11.44],[-68.19,10.55],[-66.23,10.65],[-64.89,10.08],[-64.32,10.64],[-61.88,10.72],[-62.73,10.42],[-62.39,9.95],[-60.83,9.38],[-60.67,8.58],[-59.1,8.0],[-58.48,7.35],[-58.45,6.83],[-57.15,5.97],[-53.96,5.76],[-52.88,5.41],[-51.66,4.16],[-51.32,4.2],[-50.51,1.9],[-49.97,1.74],[-49.95,1.05],[-50.7,0.22],[-50.39,-0.08],[-48.62,-0.24],[-48.58,-1.24],[-47.82,-0.58],[-44.91,-1.55],[-44.42,-2.14],[-44.58,-2.69],[-43.42,-2.38],[-41.47,-2.91],[-39.98,-2.87],[-37.22,-4.82],[-35.24,-5.46],[-34.73,-7.34],[-35.13,-9.0],[-38.67,-13.06],[-39.27,-17.87],[-39.76,-19.6],[-40.77,-20.9],[-40.94,-21.94],[-41.75,-22.37],[-41.99,-22.97],[-44.65,-23.35],[-47.65,-24.89],[-48.5,-25.88],[-48.89,-28.67],[-50.7,-30.98],[-52.26,-32.25],[-53.81,-34.4],[-54.94,-34.95],[-56.22,-34.86],[-57.82,-34.46],[-58.43,-33.91],[-58.5,-34.43],[-57.23,-35.29],[-57.36,-35.98],[-56.74,-36.41],[-56.79,-36.9],[-57.75,-38.18],[-59.23,-38.72],[-62.34,-38.83],[-62.15,-40.68],[-62.75,-41.03],[-63.77,-41.17],[-64.73,-40.8],[-65.12,-41.06],[-64.98,-42.06],[-64.3,-42.36],[-63.76,-42.04],[-63.46,-42.56],[-65.18,-43.5],[-65.57,-45.04],[-66.51,-45.04],[-67.29,-45.55],[-67.58,-46.3],[-66.6,-47.03],[-65.64,-47.24],[-65.99,-48.13],[-67.17,-48.7],[-67.82,-49.87],[-69.14,-50.73],[-68.82,-51.77],[-68.15,-52.35],[-69.46,-52.29],[-70.85,-52.9],[-71.01,-53.83],[-72.56,-53.53],[-74.95,-52.26],[-75.61,-48.67],[-75.18,-47.71],[-74.13,-46.94],[-75.64,-46.65],[-74.69,-45.76],[-74.35,-44.1],[-73.24,-44.45],[-72.72,-42.38],[-73.39,-42.12],[-73.7,-43.37],[-74.33,-43.22],[-73.68,-39.94],[-73.22,-39.26],[-73.59,-37.16],[-73.17,-37.12],[-71.44,-32.42],[-71.49,-28.86],[-70.91,-27.64],[-70.09,-21.39],[-70.16,-19.76],[-70.37,-18.35],[-71.38,-17.77],[-71.46,-17.36],[-76.01,-14.65],[-76.42,-13.82],[-76.26,-13.54],[-79.76,-7.19],[-81.25,-6.14],[-80.93,-5.69],[-81.41,-4.74],[-79.77,-2.66],[-79.99,-2.22],[-80.37,-2.69],[-80.97,-2.25],[-80.93,-1.06],[-80.58,-0.91],[-80.09,0.77],[-78.86,1.38],[-78.99,1.69],[-78.62,1.77],[-78.43,2.63],[-77.93,2.7],[-77.13,3.85],[-77.5,4.09],[-77.48,6.69],[-78.21,7.51],[-78.43,8.05],[-78.18,8.32]],
+[[-155.94,19.06],[-155.86,20.27],[-154.81,19.51],[-155.69,18.92],[-155.94,19.06]],
+[[-158.03,21.72],[-157.65,21.32],[-157.71,21.26],[-158.13,21.31],[-158.29,21.58],[-158.03,21.72]],
+[[-76.52,21.21],[-74.18,20.28],[-74.96,19.92],[-77.76,19.86],[-77.09,20.41],[-78.14,20.74],[-78.72,21.6],[-82.17,22.39],[-81.8,22.64],[-82.78,22.69],[-84.05,21.91],[-84.97,21.9],[-83.27,22.98],[-80.62,23.11],[-79.28,22.4],[-78.35,22.51],[-76.52,21.21]],
+[[-78.91,26.42],[-78.98,26.79],[-77.85,26.84],[-77.82,26.58],[-78.91,26.42]],
+[[-128.36,50.77],[-125.76,50.3],[-123.51,48.51],[-125.66,48.83],[-127.03,49.81],[-128.06,49.99],[-128.36,50.77]],
+[[-133.24,53.85],[-133.18,54.17],[-131.75,54.12],[-132.05,52.98],[-131.18,52.18],[-132.18,52.64],[-133.24,53.85]],
+[[-153.23,57.97],[-152.14,57.59],[-154.01,56.73],[-154.52,56.99],[-154.67,57.46],[-153.23,57.97]],
+[[-165.58,59.91],[-166.19,59.75],[-167.46,60.21],[-165.67,60.29],[-165.58,59.91]],
+[[-79.93,62.39],[-79.27,62.16],[-79.66,61.63],[-80.36,62.02],[-79.93,62.39]],
+[[-81.88,62.9],[-83.07,62.16],[-83.99,62.45],[-83.25,62.91],[-81.88,62.9]],
+[[-171.55,63.32],[-171.73,63.78],[-168.69,63.3],[-169.53,62.98],[-171.55,63.32]],
+[[-83.11,64.1],[-85.52,63.05],[-85.87,63.64],[-87.22,63.54],[-86.35,64.04],[-85.88,65.74],[-85.16,65.66],[-84.98,65.22],[-84.46,65.37],[-81.64,64.46],[-81.55,63.98],[-80.1,63.73],[-80.99,63.41],[-82.55,63.65],[-83.11,64.1]],
+[[-172.56,64.46],[-173.89,64.28],[-175.98,64.92],[-176.21,65.36],[-178.36,65.39],[-178.9,65.74],[-178.69,66.11],[-179.88,65.87],[-179.43,65.4],[-180.0,64.98],[-180.0,68.96],[-174.93,67.21],[-175.01,66.58],[-174.34,66.34],[-174.57,67.06],[-171.86,66.91],[-169.9,65.98],[-170.89,65.54],[-172.53,65.44],[-172.56,64.46]],
+[[-98.22,70.14],[-95.65,69.11],[-96.27,68.76],[-99.8,69.4],[-98.22,70.14]],
+[[-102.09,69.12],[-102.43,68.75],[-105.96,69.18],[-113.31,68.54],[-113.85,69.01],[-116.11,69.17],[-117.34,69.96],[-112.42,70.37],[-117.9,70.54],[-118.43,70.91],[-116.11,71.31],[-119.4,71.56],[-117.87,72.71],[-115.19,73.31],[-114.17,73.12],[-114.67,72.65],[-112.44,72.96],[-111.05,72.45],[-109.92,72.96],[-109.01,72.63],[-108.19,71.65],[-107.69,72.07],[-108.4,73.09],[-107.52,73.24],[-105.4,72.67],[-104.46,70.99],[-100.98,70.02],[-101.09,69.58],[-102.73,69.5],[-102.09,69.12]],
+[[-180.0,70.83],[-179.87,71.56],[-177.58,71.27],[-178.69,70.89],[-180.0,70.83]],
+[[-96.72,71.66],[-99.32,71.36],[-102.5,72.51],[-102.48,72.83],[-100.44,72.71],[-101.54,73.36],[-100.36,73.84],[-97.38,73.76],[-97.12,73.47],[-98.05,72.99],[-96.54,72.56],[-96.72,71.66]],
+[[-120.46,71.38],[-123.09,70.9],[-123.62,71.34],[-125.93,71.87],[-123.94,73.68],[-124.92,74.29],[-117.56,74.19],[-115.51,73.48],[-119.22,72.52],[-120.46,71.82],[-120.46,71.38]],
+[[-96.02,73.44],[-94.5,74.13],[-90.51,73.86],[-94.27,72.02],[-95.41,72.06],[-96.03,72.94],[-96.02,73.44]],
+[[-106.94,73.46],[-105.26,73.64],[-104.5,73.42],[-105.38,72.76],[-106.94,73.46]],
+[[-76.25,72.83],[-79.78,72.8],[-80.88,73.33],[-80.83,73.69],[-78.06,73.65],[-76.25,72.83]],
+[[-94.16,74.59],[-95.61,74.67],[-96.82,74.93],[-96.29,75.38],[-94.85,75.65],[-93.61,74.98],[-94.16,74.59]],
+[[-113.87,74.72],[-111.79,75.16],[-117.71,75.22],[-115.4,76.48],[-109.07,75.47],[-110.5,76.43],[-109.58,76.79],[-108.55,76.68],[-107.82,75.85],[-105.88,75.97],[-105.7,75.48],[-106.31,75.01],[-112.22,74.42],[-113.74,74.39],[-113.87,74.72]],
+[[-96.75,77.16],[-91.61,76.78],[-90.74,76.45],[-90.97,76.07],[-89.19,75.61],[-81.13,75.71],[-80.06,75.34],[-79.83,74.92],[-81.95,74.44],[-88.15,74.39],[-92.42,74.84],[-92.89,75.88],[-93.89,76.32],[-97.12,76.75],[-96.75,77.16]],
+[[-102.57,76.34],[-98.5,76.72],[-97.74,76.26],[-97.7,75.74],[-98.16,75.0],[-99.81,74.9],[-100.88,75.06],[-100.86,75.64],[-102.5,75.56],[-102.57,76.34]],
+[[-116.34,76.88],[-121.5,75.9],[-122.85,76.12],[-119.1,77.51],[-116.2,77.65],[-116.34,76.88]],
+[[-96.17,77.56],[-96.44,77.83],[-93.72,77.63],[-94.3,77.49],[-96.17,77.56]],
+[[-109.85,78.0],[-112.05,77.41],[-113.53,77.73],[-112.72,78.05],[-109.85,78.0]],
+[[-98.63,78.87],[-95.56,78.42],[-95.83,78.06],[-97.31,77.85],[-98.12,78.08],[-98.63,78.87]],
+[[-104.21,78.68],[-105.42,78.92],[-105.49,79.3],[-100.83,78.8],[-99.67,77.91],[-105.18,78.38],[-104.21,78.68]],
+[[-109.66,78.6],[-112.54,78.41],[-111.5,78.85],[-109.66,78.6]],
+[[-87.02,79.66],[-85.81,79.34],[-89.04,78.29],[-90.8,78.22],[-92.88,78.34],[-93.95,78.75],[-93.94,79.11],[-93.15,79.38],[-94.97,79.37],[-96.71,80.16],[-95.32,80.91],[-94.3,80.98],[-94.74,81.21],[-92.41,81.26],[-91.13,80.72],[-87.81,80.32],[-87.02,79.66]],
+[[-73.29,-53.96],[-74.66,-52.84],[-71.11,-54.07],[-70.27,-52.93],[-69.35,-52.52],[-68.63,-52.64],[-67.75,-53.85],[-65.05,-54.7],[-65.5,-55.2],[-66.45,-55.25],[-66.96,-54.9],[-67.29,-55.3],[-68.64,-55.58],[-71.01,-55.05],[-73.29,-53.96]],
+[[-60.7,-52.3],[-61.2,-51.85],[-60.0,-51.25],[-59.15,-51.5],[-58.55,-51.1],[-57.75,-51.55],[-58.05,-51.9],[-59.4,-52.2],[-59.85,-51.85],[-60.7,-52.3]],
+[[-12.95,7.8],[-13.25,8.9],[-14.84,10.88],[-16.61,12.17],[-16.71,13.59],[-17.63,14.73],[-16.46,16.14],[-16.15,18.11],[-16.28,20.09],[-17.06,21.0],[-16.97,21.89],[-16.26,22.68],[-15.98,23.72],[-15.09,24.52],[-14.44,26.25],[-12.62,28.04],[-11.69,28.15],[-9.56,29.93],[-9.81,31.18],[-9.3,32.56],[-6.91,34.11],[-5.93,35.76],[-2.17,35.17],[1.47,36.61],[5.32,36.72],[6.26,37.11],[8.42,36.95],[9.51,37.35],[10.21,37.23],[10.18,36.72],[11.1,36.9],[10.6,36.41],[10.94,35.7],[10.81,34.83],[10.15,34.33],[10.34,33.79],[10.86,33.77],[11.49,33.14],[15.25,32.27],[15.71,31.38],[19.09,30.27],[20.05,30.99],[19.82,31.75],[20.13,32.24],[21.54,32.84],[22.9,32.64],[23.24,32.19],[24.92,31.9],[25.16,31.57],[26.5,31.59],[28.91,30.87],[30.98,31.56],[31.69,31.43],[31.96,30.93],[32.19,31.26],[33.77,30.97],[34.56,31.55],[36.0,34.64],[36.15,35.82],[35.78,36.27],[36.16,36.65],[34.71,36.8],[34.03,36.22],[32.51,36.11],[31.7,36.64],[30.62,36.68],[30.39,36.26],[29.7,36.14],[28.73,36.68],[27.64,36.66],[26.32,38.21],[26.8,38.99],[26.17,39.46],[27.28,40.42],[28.82,40.46],[29.24,41.22],[31.15,41.09],[33.51,42.02],[35.17,42.04],[38.35,40.95],[40.37,41.01],[41.55,41.54],[41.45,42.65],[36.68,45.24],[37.4,45.4],[38.23,46.24],[37.67,46.64],[39.12,47.26],[34.96,46.27],[35.02,45.65],[36.53,45.47],[36.33,45.11],[33.88,44.36],[33.33,44.56],[33.55,45.03],[32.45,45.33],[33.59,45.85],[33.3,46.08],[31.74,46.33],[31.68,46.71],[30.75,46.58],[29.63,45.04],[28.84,44.91],[28.56,43.71],[27.67,42.58],[28.12,41.62],[28.99,41.3],[28.81,41.05],[27.62,41.0],[26.36,40.15],[26.06,40.82],[24.93,40.95],[23.71,40.69],[24.41,40.12],[23.9,39.96],[23.34,39.96],[22.81,40.48],[22.63,40.26],[23.35,39.19],[22.97,38.97],[24.03,38.22],[24.04,37.66],[23.12,37.92],[23.41,37.41],[22.77,37.31],[23.15,36.42],[22.49,36.41],[21.67,36.84],[21.12,38.31],[19.41,40.25],[19.54,41.72],[16.02,43.51],[15.17,44.24],[14.9,45.08],[14.26,45.23],[13.95,44.8],[13.66,45.14],[13.94,45.59],[13.14,45.74],[12.33,45.38],[12.26,44.6],[12.59,44.09],[15.14,41.96],[15.93,41.96],[16.17,41.74],[15.89,41.54],[18.48,40.17],[18.29,39.81],[16.87,40.44],[16.45,39.8],[17.17,39.42],[17.05,38.9],[16.64,38.84],[16.1,37.99],[15.68,37.91],[16.11,38.96],[15.41,40.05],[12.11,41.7],[10.51,42.93],[10.2,43.92],[8.89,44.37],[6.53,43.13],[4.56,43.4],[3.1,43.08],[3.04,41.89],[2.09,41.23],[0.81,41.01],[-0.28,39.31],[0.11,38.74],[-0.68,37.64],[-1.44,37.44],[-2.15,36.67],[-4.37,36.68],[-5.38,35.95],[-5.87,36.03],[-6.52,36.94],[-8.9,36.87],[-8.84,38.27],[-9.53,38.74],[-8.77,40.76],[-8.98,42.59],[-9.39,43.03],[-7.98,43.75],[-1.9,43.42],[-1.38,44.02],[-1.19,46.01],[-2.96,47.57],[-4.49,47.95],[-4.59,48.68],[-3.3,48.9],[-1.62,48.64],[-1.93,49.78],[-0.99,49.35],[1.34,50.13],[1.64,50.95],[3.83,51.62],[4.71,53.09],[7.1,53.69],[8.12,53.53],[8.8,54.02],[8.12,55.52],[8.09,56.54],[8.54,57.11],[10.58,57.73],[10.25,56.89],[10.91,56.46],[9.65,55.47],[9.94,54.6],[10.95,54.36],[10.94,54.01],[12.52,54.47],[14.12,53.76],[17.62,54.85],[19.66,54.43],[19.89,54.87],[21.27,55.19],[21.09,56.78],[21.58,57.41],[22.52,57.75],[23.32,57.01],[24.12,57.03],[24.43,58.38],[23.43,58.61],[23.34,59.19],[25.86,59.61],[27.98,59.48],[29.12,60.03],[28.07,60.5],[22.87,59.85],[21.32,60.72],[21.54,61.71],[21.06,62.61],[21.54,63.19],[25.4,65.11],[25.29,65.53],[23.9,66.01],[22.18,65.72],[21.21,65.03],[21.37,64.41],[17.85,62.75],[17.12,61.34],[18.79,60.08],[17.87,58.95],[16.83,58.72],[15.88,56.1],[14.67,56.2],[14.1,55.41],[12.94,55.36],[11.03,58.86],[10.36,59.47],[8.38,58.31],[7.05,58.08],[5.67,58.59],[4.99,61.97],[10.53,64.49],[14.76,67.81],[19.18,69.82],[23.02,70.2],[24.55,71.03],[28.17,71.19],[31.29,70.45],[30.01,70.19],[31.1,69.56],[32.13,69.91],[33.78,69.3],[36.51,69.06],[41.06,67.46],[41.13,66.79],[38.38,66.0],[33.18,66.63],[34.81,65.9],[34.94,64.41],[37.01,63.85],[37.14,64.33],[36.54,64.76],[37.18,65.14],[39.59,64.52],[40.44,64.76],[39.76,65.5],[42.09,66.48],[43.95,66.07],[44.53,66.76],[43.7,67.35],[44.19,67.95],[43.45,68.57],[46.25,68.25],[46.82,67.69],[45.56,67.57],[45.56,67.01],[46.35,66.67],[47.89,66.88],[48.14,67.52],[53.72,68.86],[54.47,68.81],[53.49,68.2],[54.73,68.1],[58.8,68.88],[59.94,68.28],[61.08,68.94],[60.03,69.52],[60.55,69.85],[63.5,69.55],[68.51,68.09],[69.18,68.62],[68.14,69.36],[66.93,69.45],[67.26,69.93],[66.69,71.03],[68.54,71.93],[69.2,72.84],[69.94,73.04],[72.59,72.78],[72.8,72.22],[71.85,71.41],[72.47,71.09],[72.79,70.39],[72.56,69.02],[73.67,68.41],[73.24,67.74],[71.28,66.32],[72.42,66.17],[73.92,66.79],[75.05,67.76],[74.47,68.33],[74.94,68.99],[73.84,69.07],[73.6,69.63],[74.4,70.63],[73.1,71.45],[74.89,72.12],[74.66,72.83],[75.16,72.85],[75.68,72.3],[75.29,71.34],[76.36,71.15],[75.9,71.87],[77.58,72.27],[79.65,72.32],[81.5,71.75],[80.61,72.58],[80.51,73.65],[86.82,73.94],[86.01,74.46],[87.17,75.12],[92.9,75.77],[93.23,76.05],[96.68,75.92],[98.92,76.45],[100.76,76.43],[101.99,77.29],[104.35,77.7],[106.07,77.37],[104.71,77.13],[106.97,76.97],[107.24,76.48],[111.08,76.71],[114.13,75.85],[113.89,75.33],[109.4,74.18],[112.12,73.79],[113.02,73.98],[113.53,73.34],[115.57,73.75],[118.78,73.59],[119.02,73.12],[123.2,72.97],[123.26,73.74],[126.98,73.57],[128.59,73.04],[129.05,72.4],[128.46,71.98],[129.72,71.19],[131.29,70.79],[132.25,71.84],[133.86,71.39],[135.56,71.66],[137.5,71.35],[138.23,71.63],[139.87,71.49],[139.15,72.42],[140.47,72.85],[149.5,72.2],[150.35,71.61],[152.97,70.84],[159.0,70.87],[159.83,70.45],[159.71,69.72],[160.94,69.44],[167.84,69.58],[169.58,68.69],[170.82,69.01],[170.01,69.65],[170.45,70.1],[175.72,69.88],[180.0,68.96],[180.0,64.98],[178.71,64.53],[177.41,64.61],[179.37,62.98],[179.23,62.3],[177.36,62.52],[173.68,61.65],[170.7,60.34],[170.33,59.88],[168.9,60.57],[166.29,59.79],[165.84,60.16],[164.88,59.73],[163.54,59.87],[162.02,58.24],[162.05,57.84],[163.19,57.62],[163.06,56.16],[162.13,56.12],[161.7,55.29],[162.12,54.86],[160.37,54.34],[160.02,53.2],[158.53,52.96],[158.23,51.94],[156.79,51.01],[155.43,55.38],[155.91,56.77],[156.76,57.36],[156.81,57.83],[158.36,58.06],[163.67,61.14],[164.47,62.55],[163.26,62.47],[162.66,61.64],[160.12,60.54],[159.3,61.77],[156.72,61.43],[154.22,59.76],[155.04,59.14],[151.27,58.78],[151.34,59.5],[149.78,59.66],[148.54,59.16],[145.49,59.34],[142.2,59.04],[135.13,54.73],[136.7,54.6],[137.19,53.98],[138.16,53.76],[138.8,54.25],[139.9,54.19],[141.35,53.09],[141.38,52.24],[140.6,51.24],[140.06,48.45],[138.22,46.31],[134.87,43.4],[133.54,42.81],[132.91,42.8],[132.28,43.28],[129.97,41.94],[129.71,40.88],[127.53,39.76],[127.39,39.21],[128.35,38.61],[129.46,36.78],[129.47,35.63],[129.09,35.08],[126.49,34.39],[126.56,35.68],[126.12,36.73],[126.86,36.89],[126.17,37.75],[125.69,37.94],[125.28,37.67],[124.71,38.11],[125.22,38.67],[125.32,39.55],[124.27,39.93],[121.05,38.9],[121.59,39.36],[121.38,39.75],[122.17,40.42],[121.64,40.95],[119.02,39.25],[118.04,39.2],[117.53,38.74],[118.06,38.06],[118.88,37.9],[118.91,37.45],[119.7,37.16],[120.82,37.87],[122.36,37.45],[122.52,36.93],[121.1,36.65],[119.15,34.91],[120.23,34.36],[121.91,31.69],[121.89,30.95],[121.26,30.68],[122.09,29.83],[121.68,28.23],[121.13,28.14],[118.66,24.55],[115.89,22.78],[114.76,22.67],[114.15,22.22],[113.81,22.55],[113.24,22.05],[110.79,21.4],[110.44,20.34],[109.89,20.28],[109.63,21.01],[109.86,21.4],[108.52,21.72],[106.72,20.7],[105.88,19.75],[105.66,19.06],[107.36,16.7],[108.88,15.28],[109.34,13.43],[109.2,11.67],[105.16,8.6],[104.8,9.24],[105.08,9.92],[103.5,10.63],[102.58,12.19],[101.69,12.65],[100.83,12.63],[100.98,13.41],[100.1,13.41],[99.22,9.24],[99.87,9.21],[100.46,7.43],[102.96,5.52],[103.38,4.86],[103.5,2.79],[104.23,1.29],[103.52,1.23],[101.39,2.76],[100.2,5.31],[100.09,6.46],[98.5,8.38],[98.34,7.79],[98.15,8.35],[98.76,11.44],[98.43,12.03],[98.51,13.12],[97.16,16.93],[95.37,15.71],[94.19,16.04],[94.53,17.28],[94.32,18.21],[93.54,19.37],[93.66,19.73],[93.08,19.86],[92.37,20.67],[91.42,22.77],[90.5,22.81],[90.27,21.84],[89.03,22.06],[88.89,21.69],[86.98,21.5],[87.03,20.74],[86.5,20.15],[85.06,19.48],[82.19,17.02],[82.19,16.56],[80.32,15.9],[80.03,15.14],[80.29,13.01],[79.86,12.06],[79.86,10.36],[79.34,10.31],[78.89,9.55],[79.19,9.22],[78.28,8.93],[77.54,7.97],[76.59,8.9],[74.86,12.74],[74.44,14.62],[73.53,15.99],[72.63,21.36],[71.18,20.76],[70.47,20.88],[69.16,22.09],[69.64,22.45],[69.35,22.84],[67.44,23.94],[66.37,25.43],[61.5,25.08],[57.4,25.74],[56.97,26.97],[56.49,27.14],[54.72,26.48],[51.52,27.87],[50.12,30.15],[49.58,29.99],[48.94,30.32],[48.57,29.93],[47.97,29.98],[48.81,27.69],[50.15,26.69],[50.11,25.94],[50.81,24.75],[51.01,26.01],[51.59,25.8],[51.39,24.63],[51.79,24.02],[54.01,24.12],[56.36,26.4],[56.4,24.92],[56.85,24.24],[58.73,23.57],[59.81,22.31],[58.49,20.43],[57.83,20.24],[57.69,18.94],[56.61,18.57],[56.28,17.88],[55.27,17.63],[55.27,17.23],[52.39,16.38],[52.17,15.6],[49.57,14.71],[48.68,14.0],[45.63,13.29],[44.99,12.7],[43.48,12.64],[42.6,15.21],[42.65,16.77],[40.94,19.49],[39.14,21.29],[39.07,22.58],[38.49,23.69],[37.48,24.29],[36.93,25.6],[35.13,28.06],[34.63,28.06],[34.96,29.36],[34.92,29.5],[34.82,29.76],[33.92,27.65],[32.42,29.85],[34.1,26.14],[35.69,23.93],[35.53,23.1],[36.87,22.0],[37.48,18.61],[38.41,18.0],[39.27,15.92],[43.32,12.39],[43.29,11.97],[42.72,11.74],[44.12,10.45],[44.61,10.44],[51.11,12.02],[51.05,10.64],[49.45,6.8],[47.74,4.22],[46.56,2.86],[43.14,0.29],[41.59,-1.68],[40.26,-2.57],[39.2,-4.68],[38.74,-5.91],[38.8,-6.48],[39.44,-6.84],[39.19,-8.49],[40.48,-10.77],[40.78,-14.69],[40.09,-16.1],[39.45,-16.72],[37.41,-17.59],[34.79,-19.78],[34.7,-20.5],[35.56,-22.09],[35.46,-24.12],[32.57,-25.73],[32.92,-26.22],[32.46,-28.3],[30.06,-31.14],[28.22,-32.77],[25.78,-33.94],[22.57,-33.86],[19.62,-34.82],[18.38,-34.14],[17.93,-32.61],[18.25,-32.43],[18.22,-31.66],[15.21,-27.09],[14.26,-22.11],[11.79,-18.07],[11.64,-16.67],[12.5,-13.55],[13.63,-12.04],[13.69,-10.73],[12.88,-9.17],[13.24,-8.56],[11.91,-5.04],[8.8,-1.11],[9.8,3.07],[8.5,4.77],[5.9,4.26],[4.33,6.27],[2.69,6.26],[-1.96,4.71],[-4.65,5.17],[-7.97,4.36],[-12.95,7.8]],
+[[-61.11,10.89],[-60.94,10.11],[-61.95,10.09],[-61.68,10.76],[-61.11,10.89]],
+[[-78.34,18.23],[-76.9,18.4],[-76.2,17.89],[-77.21,17.7],[-78.34,18.23]],
+[[-67.1,18.52],[-65.59,18.23],[-67.18,17.95],[-67.1,18.52]],
+[[-70.81,19.88],[-68.32,18.61],[-68.69,18.21],[-69.95,18.43],[-70.52,18.18],[-70.67,18.43],[-71.4,17.6],[-72.37,18.21],[-73.92,18.03],[-74.46,18.34],[-74.37,18.66],[-72.69,18.45],[-72.33,18.67],[-72.78,19.48],[-73.42,19.64],[-73.19,19.92],[-70.81,19.88]],
+[[-78.19,25.21],[-77.54,24.34],[-77.78,23.71],[-78.41,24.58],[-78.19,25.21]],
+[[-77.17,25.88],[-77.34,26.53],[-77.79,27.04],[-77.0,26.59],[-77.17,25.88]],
+[[-64.01,47.04],[-63.66,46.55],[-62.01,46.44],[-62.87,45.97],[-64.14,46.39],[-64.39,46.73],[-64.01,47.04]],
+[[-53.48,49.25],[-53.79,48.52],[-53.09,48.69],[-52.65,47.54],[-53.07,46.66],[-54.18,46.81],[-53.96,47.63],[-54.24,47.75],[-55.4,46.88],[-56.0,46.92],[-55.29,47.39],[-56.25,47.63],[-59.27,47.6],[-59.42,47.9],[-58.8,48.25],[-59.23,48.52],[-58.39,49.13],[-57.36,50.72],[-55.87,51.63],[-55.41,51.59],[-56.8,49.81],[-56.14,50.15],[-55.47,49.94],[-55.82,49.59],[-53.48,49.25]],
+[[-64.17,49.96],[-61.81,49.11],[-64.52,49.87],[-64.17,49.96]],
+[[-6.73,55.17],[-5.66,54.55],[-6.2,53.87],[-6.03,53.15],[-6.79,52.26],[-8.56,51.67],[-9.98,51.82],[-9.17,52.86],[-9.69,53.88],[-7.57,55.13],[-6.73,55.17]],
+[[-5.05,55.78],[-5.59,55.31],[-5.64,56.28],[-6.15,56.79],[-5.79,57.82],[-5.01,58.63],[-3.01,58.64],[-4.07,57.55],[-1.96,57.68],[-2.22,56.87],[-3.12,55.97],[-2.09,55.91],[-1.11,54.62],[-0.43,54.46],[0.47,52.93],[1.68,52.74],[1.56,52.1],[1.05,51.81],[1.45,51.29],[0.55,50.77],[-2.96,50.7],[-3.62,50.23],[-5.78,50.16],[-4.31,51.21],[-3.41,51.43],[-4.98,51.59],[-5.27,51.99],[-4.22,52.3],[-4.77,52.84],[-4.58,53.5],[-3.09,53.4],[-2.95,53.98],[-3.63,54.62],[-4.84,54.79],[-5.08,55.06],[-4.72,55.51],[-5.05,55.78]],
+[[-21.78,64.4],[-23.96,64.89],[-22.18,65.08],[-22.23,65.38],[-24.33,65.61],[-23.65,66.26],[-22.13,66.41],[-20.58,65.73],[-19.06,66.28],[-17.8,65.99],[-16.17,66.53],[-14.51,66.46],[-14.74,65.81],[-13.61,65.13],[-14.91,64.36],[-18.66,63.5],[-22.76,63.96],[-21.78,64.4]],
+[[-75.22,67.44],[-76.99,67.1],[-77.24,67.59],[-76.81,68.15],[-75.9,68.29],[-75.11,68.01],[-75.22,67.44]],
+[[-67.91,70.12],[-66.97,69.19],[-68.81,68.72],[-64.86,67.85],[-63.42,66.93],[-61.85,66.86],[-62.16,66.16],[-63.92,65.0],[-66.72,66.39],[-68.02,66.26],[-68.14,65.69],[-65.32,64.38],[-64.67,63.39],[-65.01,62.67],[-68.78,63.75],[-66.17,61.93],[-71.02,62.91],[-72.24,63.4],[-71.89,63.68],[-74.83,64.68],[-74.82,64.39],[-77.71,64.23],[-78.56,64.57],[-77.9,65.31],[-73.96,65.45],[-74.29,65.81],[-73.94,66.31],[-72.65,67.28],[-73.31,68.07],[-76.87,68.89],[-76.23,69.15],[-78.96,70.17],[-81.31,69.74],[-88.68,70.41],[-89.51,70.76],[-88.47,71.22],[-89.89,71.22],[-90.21,72.24],[-89.44,73.13],[-88.41,73.54],[-85.83,73.8],[-86.56,73.16],[-85.77,72.53],[-84.85,73.34],[-82.32,73.75],[-80.6,72.72],[-80.75,72.06],[-77.82,72.75],[-74.23,71.77],[-74.1,71.33],[-72.24,71.56],[-71.2,70.92],[-67.91,70.12]],
+[[-22.69,82.34],[-31.9,82.2],[-24.84,81.79],[-22.9,82.09],[-22.07,81.73],[-23.17,81.15],[-15.77,81.91],[-12.77,81.72],[-12.21,81.29],[-16.85,80.35],[-20.05,80.18],[-17.73,80.13],[-19.7,78.75],[-19.67,77.64],[-18.47,76.99],[-21.68,76.63],[-19.83,76.1],[-19.6,75.25],[-20.67,75.16],[-19.37,74.3],[-21.59,74.22],[-20.43,73.82],[-20.76,73.46],[-23.57,73.31],[-22.31,72.63],[-22.3,72.18],[-24.28,72.6],[-24.79,72.33],[-22.13,71.47],[-21.75,70.66],[-23.54,70.47],[-25.54,71.43],[-25.2,70.75],[-26.36,70.23],[-22.35,70.13],[-27.75,68.47],[-31.78,68.12],[-34.2,66.68],[-36.35,65.98],[-39.81,65.46],[-40.67,64.84],[-40.68,64.14],[-41.19,63.48],[-42.82,62.68],[-42.42,61.9],[-43.38,60.1],[-44.79,60.04],[-46.26,60.85],[-48.26,60.86],[-51.63,63.63],[-52.28,65.18],[-53.66,66.1],[-53.3,66.84],[-53.97,67.19],[-52.98,68.36],[-51.48,68.73],[-50.87,69.93],[-53.46,69.28],[-54.68,69.61],[-54.75,70.29],[-54.36,70.82],[-51.39,70.57],[-54.0,71.55],[-55.83,71.65],[-54.72,72.59],[-57.32,74.71],[-58.6,75.1],[-58.59,75.52],[-61.27,76.1],[-68.5,76.06],[-71.4,77.01],[-66.76,77.38],[-73.3,78.04],[-73.16,78.43],[-65.71,79.39],[-65.32,79.76],[-68.02,80.12],[-62.23,81.32],[-62.65,81.77],[-60.28,82.03],[-54.13,82.2],[-53.04,81.89],[-50.39,82.44],[-44.52,81.66],[-46.9,82.2],[-46.76,82.63],[-43.41,83.23],[-39.9,83.18],[-38.62,83.55],[-35.09,83.65],[-27.1,83.52],[-20.85,82.73],[-22.69,82.34]],
+[[-82.42,82.86],[-72.83,83.23],[-61.85,82.63],[-61.89,82.36],[-67.66,81.5],[-65.48,81.51],[-69.47,80.62],[-71.18,79.8],[-76.91,79.32],[-75.53,79.2],[-76.22,79.02],[-75.39,78.53],[-79.76,77.21],[-77.91,77.02],[-77.89,76.78],[-80.56,76.18],[-89.49,76.47],[-89.62,76.95],[-87.77,77.18],[-88.26,77.9],[-84.98,77.54],[-86.34,78.18],[-87.96,78.37],[-85.38,79.0],[-85.09,79.35],[-86.51,79.74],[-86.93,80.25],[-83.41,80.1],[-81.85,80.46],[-87.6,80.52],[-89.37,80.86],[-91.59,81.89],[-85.5,82.65],[-83.18,82.32],[-82.42,82.86]],
+[[12.57,38.13],[13.74,38.03],[15.52,38.23],[15.1,36.62],[12.43,37.61],[12.57,38.13]],
+[[8.16,40.95],[9.21,41.21],[9.81,40.5],[9.67,39.18],[8.81,38.91],[8.43,39.17],[8.16,40.95]],
+[[9.56,42.15],[9.23,41.38],[8.78,41.58],[8.54,42.26],[9.39,43.01],[9.56,42.15]],
+[[11.04,55.36],[10.9,55.78],[12.37,56.11],[12.69,55.61],[12.09,54.8],[11.04,55.36]],
+[[17.12,76.81],[15.91,76.77],[13.76,77.38],[14.67,77.74],[11.22,78.87],[10.44,79.65],[13.17,80.01],[13.72,79.66],[15.14,79.67],[15.52,80.02],[16.99,80.05],[21.54,78.96],[19.03,78.56],[18.47,77.83],[17.59,77.64],[17.12,76.81]],
+[[32.26,35.1],[33.67,35.37],[34.58,35.67],[33.9,35.25],[34.0,34.98],[32.49,34.7],[32.26,35.1]],
+[[24.25,35.37],[26.29,35.3],[26.16,35.0],[24.72,34.92],[23.51,35.28],[23.7,35.71],[24.25,35.37]],
+[[22.49,77.44],[20.73,77.68],[21.42,77.94],[20.81,78.25],[22.88,78.45],[23.28,78.08],[24.72,77.85],[22.49,77.44]],
+[[21.91,80.36],[22.92,80.66],[27.41,80.06],[25.92,79.52],[23.02,79.4],[20.08,79.57],[17.37,80.32],[20.46,80.6],[21.91,80.36]],
+[[68.94,-48.63],[70.53,-49.07],[70.56,-49.26],[70.28,-49.71],[68.75,-49.78],[68.94,-48.63]],
+[[49.86,-15.41],[49.77,-16.88],[47.1,-24.94],[45.41,-25.6],[44.04,-24.99],[43.25,-22.06],[44.37,-20.07],[43.96,-17.41],[44.45,-16.22],[46.31,-15.78],[47.71,-14.59],[47.87,-13.66],[48.29,-13.78],[49.19,-12.04],[49.81,-12.9],[50.48,-15.23],[50.2,-16.0],[49.86,-15.41]],
+[[119.9,-9.36],[120.72,-10.24],[118.97,-9.56],[119.9,-9.36]],
+[[117.9,-8.1],[118.88,-8.28],[119.13,-8.71],[116.74,-9.03],[117.08,-8.46],[117.9,-8.1]],
+[[114.56,-8.75],[113.46,-8.35],[108.28,-7.77],[105.37,-6.85],[106.05,-5.9],[107.27,-5.95],[108.49,-6.42],[108.62,-6.78],[110.54,-6.88],[110.76,-6.47],[112.61,-6.95],[112.98,-7.59],[114.48,-7.78],[115.71,-8.37],[114.56,-8.75]],
+[[104.71,-5.87],[102.58,-4.22],[101.4,-2.8],[100.14,-0.65],[99.26,0.18],[98.6,1.82],[95.38,4.97],[95.29,5.48],[97.48,5.25],[100.64,2.1],[101.66,2.08],[103.84,0.1],[103.44,-0.71],[104.37,-1.08],[104.89,-2.34],[105.62,-2.43],[106.11,-3.06],[105.82,-5.85],[104.71,-5.87]],
+[[116.56,-1.49],[116.15,-4.01],[116.0,-3.66],[114.86,-4.11],[114.47,-3.5],[113.26,-3.12],[112.07,-3.48],[111.7,-2.99],[110.22,-2.93],[110.07,-1.59],[109.09,-0.46],[108.95,0.42],[109.07,1.34],[109.66,2.01],[110.4,1.66],[111.17,1.85],[111.37,2.7],[113.0,3.1],[116.73,6.92],[117.13,6.93],[117.69,5.99],[119.18,5.41],[119.11,5.02],[118.44,4.97],[118.62,4.48],[117.88,4.14],[117.31,3.23],[118.05,2.29],[117.88,1.83],[119.0,0.9],[117.81,0.78],[117.52,-0.8],[116.56,-1.49]],
+[[81.79,7.52],[81.64,6.48],[80.35,5.97],[79.87,6.76],[79.7,8.2],[80.15,9.82],[80.84,9.27],[81.79,7.52]],
+[[119.69,10.55],[117.17,8.37],[119.51,11.37],[119.69,10.55]],
+[[109.48,18.2],[108.66,18.51],[108.63,19.37],[109.12,19.82],[110.79,20.08],[111.01,19.7],[110.34,18.68],[109.48,18.2]],
+[[68.85,76.54],[61.58,75.26],[58.48,74.31],[55.42,72.37],[55.62,71.54],[57.54,70.72],[53.68,70.76],[53.41,71.21],[51.6,71.47],[51.46,72.01],[52.48,72.23],[52.44,72.77],[54.43,73.63],[53.51,73.75],[55.9,74.63],[55.63,75.08],[61.17,76.25],[68.16,76.94],[68.85,76.54]],
+[[105.08,78.31],[99.44,77.92],[101.26,79.23],[102.09,79.35],[105.37,78.71],[105.08,78.31]],
+[[92.55,80.14],[91.18,80.34],[95.94,81.25],[100.19,79.78],[99.94,78.88],[97.76,78.76],[93.31,79.43],[92.55,80.14]],
+[[51.52,80.7],[47.59,80.01],[46.5,80.25],[47.07,80.56],[44.85,80.59],[48.32,80.78],[48.52,80.51],[50.04,80.92],[51.52,80.7]],
+[[173.96,-40.93],[174.25,-41.77],[172.71,-43.37],[173.08,-43.85],[171.45,-44.24],[170.62,-45.91],[169.33,-46.64],[166.68,-46.22],[166.51,-45.85],[167.05,-45.11],[170.52,-43.03],[172.1,-40.96],[172.8,-40.49],[173.25,-41.33],[173.96,-40.93]],
+[[146.05,-43.55],[144.74,-40.7],[146.36,-41.14],[148.29,-40.88],[148.36,-42.06],[147.91,-43.21],[147.56,-42.94],[146.87,-43.63],[146.05,-43.55]],
+[[173.82,-39.51],[173.85,-39.15],[174.57,-38.8],[174.7,-37.38],[172.64,-34.53],[173.01,-34.45],[174.33,-35.27],[175.34,-37.21],[175.36,-36.53],[175.81,-36.8],[175.96,-37.56],[176.76,-37.88],[178.52,-37.7],[177.97,-39.17],[177.21,-39.15],[176.01,-41.29],[175.24,-41.69],[174.65,-41.28],[175.23,-40.46],[174.9,-39.91],[173.82,-39.51]],
+[[123.66,-33.89],[119.89,-33.98],[118.02,-35.06],[116.63,-35.03],[115.03,-34.2],[115.05,-33.62],[115.71,-33.26],[115.8,-32.21],[115.04,-29.46],[113.34,-26.12],[113.78,-26.55],[113.44,-25.62],[114.23,-26.3],[113.39,-24.38],[113.74,-22.48],[114.15,-21.76],[114.23,-22.52],[114.65,-21.83],[116.71,-20.7],[120.86,-19.68],[122.24,-18.2],[122.31,-17.25],[123.01,-16.41],[123.43,-17.27],[123.86,-17.07],[123.5,-16.6],[123.82,-16.11],[124.26,-16.33],[124.38,-15.57],[125.69,-14.23],[126.13,-14.35],[127.07,-13.82],[128.36,-14.87],[129.62,-14.97],[129.41,-14.42],[130.62,-12.54],[132.58,-12.11],[132.56,-11.6],[131.82,-11.27],[132.36,-11.13],[135.3,-12.25],[136.49,-11.86],[136.95,-12.35],[135.96,-13.32],[135.5,-15.0],[140.22,-17.71],[140.88,-17.37],[141.27,-16.39],[141.7,-15.04],[141.69,-12.41],[142.52,-10.67],[143.92,-14.55],[144.56,-14.17],[145.37,-14.98],[146.39,-18.96],[148.85,-20.39],[149.68,-22.34],[150.08,-22.12],[150.48,-22.56],[150.73,-22.4],[150.9,-23.46],[152.86,-25.27],[153.09,-27.26],[153.57,-28.11],[152.89,-31.64],[152.45,-32.55],[151.71,-33.04],[150.33,-35.67],[150.0,-37.43],[148.3,-37.81],[146.32,-39.04],[144.88,-38.42],[145.03,-37.9],[143.61,-38.81],[140.64,-38.02],[139.99,-37.4],[139.57,-36.14],[138.12,-35.61],[138.45,-35.13],[138.21,-34.38],[137.72,-35.08],[136.83,-35.26],[137.89,-33.64],[137.81,-32.9],[136.37,-34.09],[135.99,-34.89],[135.21,-34.48],[135.24,-33.95],[134.09,-32.85],[134.27,-32.62],[131.33,-31.5],[126.15,-32.22],[124.22,-32.96],[123.66,-33.89]],
+[[164.03,-20.11],[165.02,-20.46],[167.12,-22.16],[166.74,-22.4],[165.47,-21.68],[164.03,-20.11]],
+[[177.67,-17.38],[178.72,-17.63],[178.55,-18.15],[177.38,-18.16],[177.29,-17.72],[177.67,-17.38]],
+[[180.0,-16.56],[178.73,-17.01],[178.6,-16.64],[180.0,-16.07],[180.0,-16.56]],
+[[167.11,-14.93],[167.27,-15.74],[166.79,-15.67],[166.63,-14.63],[167.11,-14.93]],
+[[161.32,-10.2],[162.4,-10.83],[161.7,-10.82],[161.32,-10.2]],
+[[125.09,-8.66],[127.34,-8.4],[123.58,-10.36],[123.98,-9.29],[125.09,-8.66]],
+[[160.85,-9.87],[159.64,-9.64],[159.7,-9.24],[160.85,-9.87]],
+[[161.53,-9.78],[160.58,-8.32],[160.92,-8.32],[161.53,-9.78]],
+[[120.72,-8.24],[122.01,-8.46],[122.9,-8.09],[122.76,-8.65],[119.92,-8.81],[119.92,-8.44],[120.72,-8.24]],
+[[159.64,-8.02],[159.92,-8.54],[158.21,-7.42],[158.36,-7.32],[159.64,-8.02]],
+[[146.97,-6.72],[148.73,-9.1],[149.31,-9.07],[149.27,-9.51],[150.04,-9.68],[149.74,-9.87],[150.8,-10.29],[150.69,-10.58],[147.91,-10.13],[146.05,-8.07],[144.74,-7.63],[143.29,-8.25],[143.41,-8.98],[142.63,-9.33],[141.03,-9.12],[140.14,-8.3],[139.13,-8.1],[138.88,-8.38],[137.61,-8.41],[138.04,-7.6],[138.67,-7.32],[137.93,-5.39],[135.16,-4.46],[133.66,-3.54],[132.98,-4.11],[132.75,-3.31],[131.99,-2.82],[133.78,-2.48],[133.7,-2.21],[132.23,-2.21],[131.84,-1.62],[130.94,-1.43],[130.52,-0.94],[132.38,-0.37],[133.99,-0.78],[134.42,-2.77],[135.46,-3.37],[136.29,-2.31],[137.44,-1.7],[141.0,-2.6],[144.58,-3.86],[145.83,-4.88],[145.98,-5.47],[147.65,-6.08],[147.89,-6.61],[146.97,-6.72]],
+[[134.21,-6.9],[134.5,-5.45],[134.72,-6.21],[134.21,-6.9]],
+[[154.51,-5.14],[156.02,-6.54],[155.88,-6.82],[155.17,-6.54],[154.51,-5.14]],
+[[149.85,-5.51],[150.14,-5.0],[150.24,-5.53],[150.81,-5.46],[151.65,-4.76],[151.54,-4.17],[152.34,-4.31],[151.98,-5.48],[150.24,-6.32],[148.32,-5.75],[148.4,-5.44],[149.85,-5.51]],
+[[150.66,-2.74],[150.94,-2.5],[152.24,-3.24],[153.14,-4.5],[152.83,-4.77],[152.41,-3.79],[150.66,-2.74]],
+[[127.0,-3.13],[127.25,-3.46],[126.87,-3.79],[126.18,-3.61],[125.99,-3.18],[127.0,-3.13]],
+[[128.14,-2.84],[130.47,-3.09],[130.83,-3.86],[129.99,-3.45],[127.9,-3.39],[128.14,-2.84]],
+[[120.04,-0.52],[120.94,-1.41],[121.48,-0.96],[123.34,-0.62],[123.26,-1.08],[122.82,-0.93],[121.51,-1.9],[122.45,-3.19],[122.27,-3.53],[123.17,-4.68],[123.16,-5.34],[122.63,-5.63],[122.24,-5.28],[122.72,-4.46],[121.74,-4.85],[121.49,-4.57],[121.62,-4.19],[120.9,-3.6],[120.97,-2.63],[120.31,-2.93],[120.43,-5.53],[119.8,-5.67],[119.37,-5.38],[119.65,-4.46],[119.5,-3.49],[119.08,-3.49],[118.77,-2.8],[120.04,0.57],[120.89,1.31],[122.93,0.88],[124.08,0.92],[125.07,1.64],[125.24,1.42],[124.44,0.43],[123.69,0.24],[120.18,0.24],[120.04,-0.52]],
+[[128.1,-0.9],[127.4,1.01],[127.93,2.17],[128.0,1.63],[128.59,1.54],[128.64,0.26],[128.12,0.36],[127.97,-0.25],[128.38,-0.78],[128.1,-0.9]],
+[[124.22,6.16],[123.94,6.89],[124.24,7.36],[123.61,7.83],[122.09,6.9],[121.92,7.19],[122.31,8.03],[123.49,8.69],[123.84,8.24],[124.6,8.51],[124.76,8.96],[125.47,8.99],[125.41,9.76],[126.22,9.29],[126.54,7.19],[126.2,6.27],[125.83,7.29],[125.36,6.79],[125.68,6.05],[125.4,5.58],[124.22,6.16]],
+[[123.98,10.28],[123.0,9.02],[122.38,9.71],[122.95,10.88],[123.5,10.94],[123.34,10.27],[124.08,11.23],[123.98,10.28]],
+[[122.0,10.44],[121.88,11.89],[123.12,11.58],[123.1,11.17],[122.0,10.44]],
+[[124.3,11.5],[124.89,11.42],[124.27,12.56],[125.23,12.54],[125.78,11.05],[125.01,11.31],[125.28,10.36],[124.8,10.13],[124.3,11.5]],
+[[121.53,13.07],[121.26,12.21],[120.32,13.47],[121.18,13.43],[121.53,13.07]],
+[[122.7,14.34],[123.95,13.78],[124.08,12.54],[122.93,13.55],[122.67,13.19],[122.03,13.78],[120.63,13.86],[120.99,14.53],[120.69,14.76],[120.56,14.4],[120.07,14.97],[119.88,16.36],[120.29,16.03],[120.72,18.51],[121.94,18.22],[122.25,18.48],[122.52,17.09],[122.25,16.26],[121.66,15.93],[121.51,15.12],[121.73,14.33],[122.7,14.34]],
+[[121.95,25.0],[121.18,22.79],[120.75,21.97],[120.11,23.56],[121.5,25.3],[121.95,25.0]],
+[[133.01,32.7],[132.36,32.99],[132.92,34.06],[133.49,33.94],[133.9,34.36],[134.64,34.15],[134.77,33.81],[134.2,33.2],[133.79,33.52],[133.01,32.7]],
+[[135.12,33.85],[135.08,34.6],[130.99,33.89],[132.0,33.15],[131.33,31.45],[130.69,31.03],[130.2,31.42],[130.45,32.32],[129.81,32.61],[129.41,33.3],[130.35,33.6],[132.62,35.43],[134.61,35.73],[135.68,35.53],[136.72,37.3],[137.39,36.83],[139.43,38.22],[140.05,39.44],[139.88,40.56],[140.31,41.2],[141.37,41.38],[141.88,39.18],[140.96,38.17],[140.77,35.84],[140.25,35.14],[138.98,34.67],[137.22,34.61],[135.79,33.46],[135.12,33.85]],
+[[139.82,42.56],[140.31,43.33],[141.38,43.39],[141.97,45.55],[143.91,44.17],[144.61,43.96],[145.32,44.38],[145.54,43.26],[144.06,42.99],[143.18,42.0],[141.61,42.68],[141.07,41.58],[139.96,41.57],[139.82,42.56]],
+[[143.51,46.14],[142.75,46.74],[142.09,45.97],[141.91,46.81],[142.18,50.95],[141.59,51.94],[141.68,53.3],[142.61,53.76],[142.21,54.23],[142.65,54.37],[143.26,52.74],[143.24,51.76],[144.65,48.98],[143.17,49.31],[142.56,47.86],[143.53,46.84],[143.51,46.14]],
+[[178.73,71.1],[180.0,71.52],[180.0,70.83],[178.9,70.78],[178.73,71.1]],
+[[139.86,73.37],[142.06,73.86],[143.6,73.21],[139.86,73.37]],
+[[149.58,74.69],[146.12,75.17],[146.36,75.5],[150.73,75.08],[149.58,74.69]],
+[[141.47,76.09],[145.09,75.56],[144.3,74.82],[138.96,74.61],[136.97,75.26],[137.51,75.95],[141.47,76.09]]
+];
+</script>
+<script data-module="boot">
+/* Hero globe boot (production). Creates the A2 v9 globe on the existing #hero-globe canvas.
+   Design-validation switch (kept through the bake period):    ?globe=reference  = the approved A2 v9 rendering, quirks included
+                                                                ?globe=improved   = default
+   If Three.js or WebGL is unavailable the globe is simply not drawn and the hero keeps its CSS backdrop (the old fallback look).
+   No telemetry provider is attached: the globe draws only the approved reference routes until real providers exist. */
+(function () {
+  'use strict';
+  var hero = document.getElementById('hero'), canvas = document.getElementById('hero-globe');
+  if (!hero || !canvas || !window.GeoGlobe) return;
+
+  var variant = 'improved';
+  try { if (new URLSearchParams(location.search).get('globe') === 'reference') variant = 'reference'; } catch (e) { }
+
+  // Desktop: the approved A2 stage proportions (globe centre at 72.2% of the hero width, i.e. the 58% column).
+  // Under 900 px (the site's existing breakpoint): today's composition, the globe centred behind the text at ~80% of the width.
+  function heroLayout(w, h) {
+    return w < 900
+      ? { cx: 0.5 * w, cy: 0.44 * h, rad: Math.min(0.40 * w, 0.43 * h) }
+      : { cx: 0.7216 * w, cy: 0.48 * h, rad: Math.min(0.232 * w, 0.43 * h) };
+  }
+
+  var options = { deferFirstDraw: true, layout: heroLayout, pointer: { target: hero, area: { x: 0.42, y: 0, w: 0.58, h: 1 } }, traffic: { mode: 'reference' } };
+  if (variant === 'reference') {
+    options.geo = { meridians: 'reference', alignment: 'reference', distribution: 'reference', datelineWrap: false };
+    options.pointer.mode = 'reference';
+  }
+
+  function start() {
+    if (window.heroGlobe) return;
+    if (performance.mark) performance.mark('globe:create');
+    var globe = GeoGlobe.create(canvas, options);   // never throws; returns { supported:false, reason } when it cannot start
+    window.heroGlobe = globe;
+    hero.setAttribute('data-globe', globe.supported ? variant : 'off');
+    if (performance.mark) performance.mark('globe:created');   // the first draw follows in the next frame ('ready')
+    if (globe.supported && globe.on) globe.on(function (type) {
+      if (type === 'ready' && performance.mark) performance.mark('globe:ready');
+      hero.setAttribute('data-globe', type === 'lost' || type === 'unsupported' ? 'off' : variant);
+    });
+  }
+
+  // Start only after the browser has painted the page (first contentful paint), then at idle, so the globe can never sit in
+  // front of first paint or the hero text. If paint timing is unavailable, a 2 s fallback starts it anyway.
+  function schedule() {
+    var started = false;
+    function go() { if (started) return; started = true; if (window.requestIdleCallback) window.requestIdleCallback(start, { timeout: 600 }); else setTimeout(start, 60); }
+    try {
+      new PerformanceObserver(function (list, obs) { if (list.getEntriesByName('first-contentful-paint').length) { obs.disconnect(); go(); } }).observe({ type: 'paint', buffered: true });
+    } catch (e) { go(); return; }
+    setTimeout(go, 2000);
+  }
+  if (document.readyState === 'complete') schedule(); else window.addEventListener('load', schedule);
+})();
+</script>
+  <!-- GLOBE:END a2v9 -->
 
 </body>
 </html>
