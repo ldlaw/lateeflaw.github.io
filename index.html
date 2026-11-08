@@ -257,35 +257,6 @@
       border-bottom: 1px solid var(--border);
     }
 
-    /* ── Hero scan-line (clipped to hero section) ── */
-    #scanline {
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(
-        90deg,
-        transparent 0%,
-        transparent 30%,
-        rgba(0,212,255,0.15) 38%,
-        rgba(0,212,255,0.55) 50%,
-        rgba(0,212,255,0.15) 62%,
-        transparent 70%,
-        transparent 100%
-      );
-      box-shadow: 0 0 12px rgba(0,212,255,0.4), 0 0 30px rgba(0,212,255,0.15);
-      animation: scan-sweep 6s linear infinite;
-      pointer-events: none;
-      z-index: 10;
-    }
-    @keyframes scan-sweep {
-      0%   { top: 0%;   opacity: 0; }
-      8%   { top: 5%;   opacity: 1; }
-      80%  { top: 80%;  opacity: 1; }
-      96%  { top: 96%;  opacity: 0; }
-      100% { top: 100%; opacity: 0; }
-    }
-
     /* Radial glow top */
     #hero::before {
       content: '';
@@ -1362,7 +1333,6 @@
   ══════════════════════════════════════ -->
   <section id="hero">
     <canvas id="hero-globe" aria-hidden="true"></canvas>
-    <div id="scanline"></div>
     <div class="container hero-inner">
       <p class="hero-label reveal">Enterprise Network Architect · Cloud Infrastructure Engineer · AI-Driven Automation</p>
 
