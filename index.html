@@ -1267,6 +1267,12 @@
     /* ═══════════════════════════════════════
        RESPONSIVE
     ═══════════════════════════════════════ */
+    /* Hamburger below 63.75em (1020px at 16px). The nine links need 988px (908px of links + 80px padding); the rest is slack
+       for fallback fonts and scrollbars. em, so it follows the default text size like the rem-based nav. */
+    @media (max-width: 63.75em) {
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+    }
     @media (max-width: 900px) {
       .about-grid { grid-template-columns: 1fr !important; gap: 2.5rem !important; }
       .contact-grid { grid-template-columns: 1fr !important; gap: 3rem !important; }
@@ -1279,8 +1285,6 @@
       .stat-item:nth-child(4) { border-top: 1px solid var(--border); border-right: none; }
 .tl-item { grid-template-columns: 1fr; gap: 0.5rem; }
       .tl-meta { padding-bottom: 0; }
-      .nav-links { display: none; }
-      .hamburger { display: flex; }
       .skills-grid { grid-template-columns: 1fr !important; }
     }
     @media (max-width: 480px) {
