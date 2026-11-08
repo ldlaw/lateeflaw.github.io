@@ -277,16 +277,18 @@
     @media (min-width: 901px) { .hero-inner { right: clamp(40px, 3.5vw, 60px); } }
     /* GLOBE:HERO-SHIFT END */
     /* GLOBE:HERO-CONTRAST BEGIN · phone and tablet (900px and below): the globe keeps its full brightness and the hero text is protected by
-       a dark halo that hugs its letters (label, name, typewriter line, badges, paragraph). text-shadow only: no box, card or overlay, so
-       nothing moves, resizes, recolours or takes a click or touch, and the globe canvas is not touched. Desktop (901px and up) never matches.
-       Plain CSS in the head, so it is there from first paint. */
+       a dark halo that hugs its letters (label, name, typewriter line, badges, paragraph). Readability refinement: the title and paragraph are
+       one step lighter, each badge gets a 40% dark fill inside its own outline (no new box) and a tighter halo, and below 405px the title
+       reserves its second line so a wrapping phrase never moves the layout or the globe. Nothing else moves, resizes or takes a click or
+       touch, and the globe canvas is not touched. Desktop (901px and up) never matches. Plain CSS in the head, so it is there from first paint. */
     @media (max-width: 900px) {
       #hero .hero-label,
       #hero .hero-name { text-shadow: 0 0 2px rgba(7,12,18,.9), 0 0 8px rgba(7,12,18,.8), 0 0 18px rgba(7,12,18,.55); }
-      #hero .hero-typewriter { text-shadow: 0 0 2px #070c12, 0 0 3px #070c12, 0 0 5px #070c12, 0 0 9px rgba(7,12,18,.95), 0 0 16px rgba(7,12,18,.9), 0 0 28px rgba(7,12,18,.8), 0 0 44px rgba(7,12,18,.55); }
-      #hero .badge { text-shadow: 0 0 3px rgba(7,12,18,1), 0 0 8px rgba(7,12,18,.9), 0 0 16px rgba(7,12,18,.7); }
-      #hero .hero-tagline { text-shadow: 0 0 2px #070c12, 0 0 3px #070c12, 0 0 6px rgba(7,12,18,.95), 0 0 12px rgba(7,12,18,.9), 0 0 22px rgba(7,12,18,.8), 0 0 36px rgba(7,12,18,.6); }
+      #hero .hero-typewriter { color: #94a8bd; text-shadow: 0 0 2px #070c12, 0 0 3px #070c12, 0 0 5px #070c12, 0 0 9px rgba(7,12,18,.95), 0 0 16px rgba(7,12,18,.9), 0 0 28px rgba(7,12,18,.8), 0 0 44px rgba(7,12,18,.55); }
+      #hero .badge { background-image: linear-gradient(rgba(7,12,18,.4), rgba(7,12,18,.4)); text-shadow: 0 0 1px #070c12, 0 0 2px #070c12, 0 0 3px #070c12, 0 0 5px #070c12, 0 0 8px rgba(7,12,18,.9), 0 0 16px rgba(7,12,18,.7); }
+      #hero .hero-tagline { color: #94a8bd; text-shadow: 0 0 2px #070c12, 0 0 3px #070c12, 0 0 6px rgba(7,12,18,.95), 0 0 12px rgba(7,12,18,.9), 0 0 22px rgba(7,12,18,.8), 0 0 36px rgba(7,12,18,.6); }
     }
+    @media (max-width: 404px) { #hero .hero-typewriter { min-height: 3.3em; min-height: 2lh; } }
     /* GLOBE:HERO-CONTRAST END */
     /* ── Hero network globe (Three.js canvas, sits behind all hero content) ── */
     #hero-globe {
