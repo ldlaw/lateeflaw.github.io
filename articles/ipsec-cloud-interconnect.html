@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IPSec Over High-Bandwidth Cloud Interconnects — Lateef Law</title>
-  <meta name="description" content="When security requirements mandate IPSec but a single cloud-native tunnel can't saturate a 100G interconnect, you need a real design strategy. A deep-dive into ECMP flow pinning, MACsec tradeoffs, and the backbone encryption gap the providers don't advertise.">
+  <title>IPSec Over High-Bandwidth Cloud Interconnects | Lateef Law</title>
+  <meta name="description" content="When security requirements mandate IPSec but a single cloud-native tunnel can't saturate a 100G interconnect, you need a design strategy. A deep-dive into ECMP flow pinning, MACsec tradeoffs, and the backbone encryption gap the providers don't advertise.">
   <meta name="author" content="Lateef Law">
   <meta property="og:title" content="IPSec Over High-Bandwidth Cloud Interconnects: The Throughput Problem No One Talks About">
   <meta property="og:description" content="A deep-dive into ECMP flow pinning, MACsec tradeoffs, and the backbone encryption gap the providers don't advertise.">
@@ -394,57 +394,55 @@
 
       <p>Here's a design problem that doesn't get talked about enough in cloud networking circles.</p>
 
-      <p>You've got a high-bandwidth cloud interconnect — 10G, 50G, maybe 100G. Your security requirements mandate IPSec encryption end-to-end. Simple enough on paper.</p>
+      <p>You've got a high-bandwidth cloud interconnect: 10G, 50G, maybe 100G. Your security requirements mandate IPSec encryption end-to-end. Simple enough on paper.</p>
 
-      <p>Then reality hits.</p>
-
-      <p>A single cloud-native IPSec tunnel can't saturate that interconnect. Cryptographic overhead and per-tunnel throughput limits mean one tunnel falls well short. So the natural answer is ECMP across multiple IPSec tunnels — spin up several, load balance across them, aggregate the bandwidth.</p>
+      <p>A single cloud-native IPSec tunnel can't saturate that interconnect. Cryptographic overhead and per-tunnel throughput limits mean one tunnel falls well short. So the natural answer is ECMP across multiple IPSec tunnels: spin up several, load balance across them, aggregate the bandwidth.</p>
 
       <p>That works. Until it doesn't.</p>
 
       <div class="callout">
-        <p>ECMP hashes on flow — source IP, destination IP, source port, destination port, protocol. A single flow is pinned to a single tunnel for its entire lifetime. You cannot split one flow across multiple paths. That's not a config issue, it's how the protocol works.</p>
+        <p>ECMP hashes on flow: source IP, destination IP, source port, destination port, protocol. A single flow is pinned to a single tunnel for its entire lifetime. You cannot split one flow across multiple paths. That's how the protocol works.</p>
       </div>
 
-      <p>What does that mean in practice? If you have a workload generating one massive sustained flow — a large backup job, a bulk data transfer, a high-throughput database sync — that entire flow rides one tunnel. All your other tunnels sit largely idle for that transaction. You've built 100G of aggregate capacity and your critical job is capped at single-tunnel throughput.</p>
+      <p>If you have a workload generating one massive sustained flow (a large backup job, a bulk data transfer, a high-throughput database sync), that entire flow rides one tunnel. All your other tunnels sit largely idle for that transaction. You've built 100G of aggregate capacity and your critical job is capped at single-tunnel throughput.</p>
 
-      <p>You can improve distribution if applications generate multiple concurrent flows to the same destination — different source ports mean different hash values, different tunnel assignments. But banking on application behavior you don't control is a design risk, not a design decision.</p>
+      <p>You can improve distribution if applications generate multiple concurrent flows to the same destination: different source ports mean different hash values, different tunnel assignments. But banking on application behavior you don't control is a design risk.</p>
 
       <h2>The Options</h2>
 
       <p>Here's how I think about the tradeoffs:</p>
 
-      <h3>Option 1 — Accept ECMP with flow-level limits</h3>
+      <h3>Option 1: Accept ECMP with flow-level limits</h3>
 
-      <p>Works well when traffic is naturally diverse — many flows from many sources. Breaks down for bulk single-flow workloads. Lowest operational complexity, no additional cost.</p>
+      <p>Works well when traffic is naturally diverse: many flows from many sources. Breaks down for bulk single-flow workloads. Lowest operational complexity, no additional cost.</p>
 
-      <h3>Option 2 — MACsec instead of IPSec</h3>
+      <h3>Option 2: MACsec instead of IPSec</h3>
 
-      <p>Operates at Layer 2, encrypts the physical link rather than building tunnels. No per-tunnel throughput ceiling, no flow pinning. Both Azure ExpressRoute Direct (10G/100G) and Google Cloud Dedicated Interconnect (10G/100G/400G) support MACsec natively. For links running 40G or higher on Azure, use XPN ciphers — non-XPN ciphers will cause sporadic session failures at those speeds.</p>
+      <p>Operates at Layer 2, encrypts the physical link rather than building tunnels. No per-tunnel throughput ceiling, no flow pinning. Both Azure ExpressRoute Direct (10G/100G) and Google Cloud Dedicated Interconnect (10G/100G/400G) support MACsec natively. For links running 40G or higher on Azure, use XPN ciphers. Non-XPN ciphers will cause sporadic session failures at those speeds.</p>
 
       <div class="callout-warning callout">
-        <p>Critical caveat: MACsec only encrypts the physical segment it's configured on. It does not extend into either provider's backbone. Google's own documentation states explicitly that MACsec for Cloud Interconnect does not provide encryption in transit within Google's network. AWS says the same. This matters for regulated or compliance-driven environments — MACsec gives you an encrypted handoff, but the backbone segments on each side remain under provider-managed encryption, not yours.</p>
+        <p>Caveat: MACsec only encrypts the physical segment it's configured on. It does not extend into either provider's backbone. Google's own documentation states explicitly that MACsec for Cloud Interconnect does not provide encryption in transit within Google's network. AWS says the same. For regulated or compliance-driven environments, MACsec gives you an encrypted handoff, but the backbone segments on each side remain under provider-managed encryption, not yours.</p>
       </div>
 
-      <h3>Option 3 — Native encrypted interconnect (and where this is heading)</h3>
+      <h3>Option 3: Native encrypted interconnect (and where this is heading)</h3>
 
-      <p>AWS and Google Cloud announced at re:Invent 2025 a jointly managed interconnect with MACsec standard between their edge routers at the colocation handoff — no customer configuration required. Azure is expected to join in 2026. The industry is clearly moving toward native encrypted interconnects as a baseline. The same backbone caveat applies — the cross-provider handoff is covered, but provider backbone encryption on each side remains provider-managed.</p>
+      <p>AWS and Google Cloud announced at re:Invent 2025 a jointly managed interconnect with MACsec standard between their edge routers at the colocation handoff, no customer configuration required. Azure is expected to join in 2026. The industry is clearly moving toward native encrypted interconnects as a baseline. The same backbone caveat applies: the cross-provider handoff is covered, but provider backbone encryption on each side remains provider-managed.</p>
 
-      <h3>Option 4 — Segment and parallelize at the application layer</h3>
+      <h3>Option 4: Segment and parallelize at the application layer</h3>
 
       <p>Engineer the workload to generate multiple parallel streams. Tools like Aspera or custom multi-stream architectures break large transfers into many flows, turning the ECMP distribution problem into an asset. High implementation complexity, but effective when the workload supports it.</p>
 
-      <h2>The Honest Architecture Question</h2>
+      <h2>The Architecture Question</h2>
 
-      <p>The question underneath all of this isn't just "which option handles the bandwidth." It's: <strong>what does your security posture actually require vs. what does your policy say it requires?</strong></p>
+      <p>The question underneath all of this is: <strong>what does your security posture actually require vs. what does your policy say it requires?</strong></p>
 
-      <p>In my experience, owning your own keys is always the recommended posture — but ultimately this comes down to your organization's risk acceptance. And that risk calculation has to include performance. MACsec operates at line rate with hardware-based encryption. IPSec introduces processing overhead that will cost you throughput, especially at scale.</p>
+      <p>In my experience, owning your own keys is always the recommended posture, but ultimately this comes down to your organization's risk acceptance. And that risk calculation has to include performance. MACsec operates at line rate with hardware-based encryption. IPSec introduces processing overhead that will cost you throughput, especially at scale.</p>
 
-      <p>If your security policy allows for provider-managed backbone encryption and you need to move large volumes of data at full interconnect speed, MACsec is a legitimate architectural choice. If cryptographic control is a hard requirement — your keys, your algorithm, your audit trail — then IPSec or TLS layered on top is non-negotiable, and you design your workloads around the throughput ceiling accordingly.</p>
+      <p>If your security policy allows for provider-managed backbone encryption and you need to move large volumes of data at full interconnect speed, MACsec is a legitimate architectural choice. If cryptographic control is a hard requirement (your keys, your algorithm, your audit trail), then IPSec or TLS layered on top is non-negotiable, and you design your workloads around the throughput ceiling accordingly.</p>
 
       <p>There is no free lunch, but at least now you know exactly what you're paying for.</p>
 
-      <p>If you've hit this problem in your environment, I'd be curious how you solved it — or what constraints made the obvious solutions unavailable.</p>
+      <p>If you've hit this problem in your environment, I'd be curious how you solved it, or what constraints made the obvious solutions unavailable.</p>
 
       <hr class="section-divider">
 

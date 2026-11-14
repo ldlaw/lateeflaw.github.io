@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Network Automation Lab Guide | Lateef Law</title>
-  <meta name="description" content="A complete network automation lab walkthrough from manual CLI to intent-driven automation. EVE-NG, Ansible, NetBox, Jinja2 templates, CI/CD pipelines, and drift detection — built and documented by a dual CCIE enterprise network architect.">
+  <meta name="description" content="A complete network automation lab walkthrough from manual CLI to intent-driven automation. EVE-NG, Ansible, NetBox, Jinja2 templates, CI/CD pipelines, and drift detection. Built and documented by a dual CCIE enterprise network architect.">
   <meta name="author" content="Lateef Law">
-  <meta property="og:title" content="Network Automation Lab Guide — EVE-NG · Ansible · NetBox · Intent-Based Networking">
+  <meta property="og:title" content="Network Automation Lab Guide | EVE-NG · Ansible · NetBox · Intent-Based Networking">
   <meta property="og:description" content="A complete walkthrough from manual CLI to intent-driven automation. 13 labs across a 7-level automation maturity model.">
   <meta property="og:url" content="https://lateeflaw.info/lab/">
   <meta property="og:type" content="article">
@@ -546,7 +546,7 @@
       <p class="article-category">Network Automation · Lab Guide · Enterprise Series</p>
       <h1 class="article-title">Network Automation Lab Guide</h1>
       <p class="article-subtitle">EVE-NG · Ansible · NetBox · Intent-Based Networking</p>
-      <p class="article-lede">A complete walkthrough from manual CLI to intent-driven automation. Built around a 7-level automation maturity model, this lab takes you through every layer of the stack — from typing commands by hand to a fully automated, compliance-checked, drift-detecting network driven entirely by NetBox as the source of truth.</p>
+      <p class="article-lede">A complete walkthrough from manual CLI to intent-driven automation. Built around a 7-level automation maturity model, this lab takes you through every layer of the stack, from typing commands by hand to a fully automated, compliance-checked, drift-detecting network driven entirely by NetBox as the source of truth.</p>
       <div class="article-meta">
         <span class="article-meta-item"><span>Lateef Law</span></span>
         <span class="article-meta-sep">·</span>
@@ -565,18 +565,18 @@
 
       <!-- ── SECTION 1 — WHY I BUILT THIS ── -->
       <section class="section-block">
-        <p class="section-label">// 01 — Background</p>
+        <p class="section-label">// 01 · Background</p>
         <h2 class="section-title">Why I Built This</h2>
-        <p>When I started going deeper into network automation, I found myself jumping between concepts — Ansible here, NetBox there, Jinja2 templates somewhere else — and spending more time figuring out how it all connected than actually learning it. What I needed was a single, ordered progression that showed the full picture from start to finish.</p>
+        <p>When I started going deeper into network automation, I found myself jumping between concepts (Ansible here, NetBox there, Jinja2 templates somewhere else) and spending more time figuring out how it all connected than actually learning it. What I needed was a single, ordered progression that showed the full picture from start to finish.</p>
         <p>So I built one.</p>
-        <p>This is the structured progression I wish had existed when I started. It's designed to work at any experience level — whether you're at CCNA trying to understand what automation even means, or a senior engineer who knows the CLI deeply and is looking for the bridge to intent-based operations.</p>
+        <p>This is the structured progression I wish had existed when I started. It's designed to work at any experience level, whether you're at CCNA trying to understand what automation even means, or a senior engineer who knows the CLI deeply and is looking for the bridge to intent-based operations.</p>
       </section>
 
       <!-- ── SECTION 2 — MATURITY MODEL ── -->
       <section class="section-block">
-        <p class="section-label">// 02 — The Framework</p>
+        <p class="section-label">// 02 · The Framework</p>
         <h2 class="section-title">The Automation Maturity Model</h2>
-        <p>The entire lab is structured around a 7-level automation maturity model. Every lab uses OSPF configuration as the constant use case — keeping the task identical across levels so you can see exactly what changes at each layer of abstraction and why. Levels 1 through 5 are fully built out in this guide. Levels 6 and 7 are Part 2.</p>
+        <p>The entire lab is structured around a 7-level automation maturity model. Every lab uses OSPF configuration as the constant use case, keeping the task identical across levels so you can see exactly what changes at each layer of abstraction and why. Levels 1 through 5 are fully built out in this guide. Levels 6 and 7 are Part 2.</p>
 
         <div class="maturity-table">
 
@@ -584,7 +584,7 @@
             <div class="maturity-level">1</div>
             <div>
               <div class="maturity-stage">Manual CLI</div>
-              <p class="maturity-desc">Baseline — commands typed by hand on each device individually.</p>
+              <p class="maturity-desc">Baseline: commands typed by hand on each device individually.</p>
             </div>
           </div>
 
@@ -592,7 +592,7 @@
             <div class="maturity-level">2</div>
             <div>
               <div class="maturity-stage">Scripts (Ad-hoc)</div>
-              <p class="maturity-desc">Speed — Python/Paramiko, Netmiko, or Bash to push CLI commands. Faster but fragile, no idempotency.</p>
+              <p class="maturity-desc">Speed: Python/Paramiko, Netmiko, or Bash to push CLI commands. Faster but fragile, no idempotency.</p>
             </div>
           </div>
 
@@ -600,7 +600,7 @@
             <div class="maturity-level">3</div>
             <div>
               <div class="maturity-stage">Ansible Playbooks</div>
-              <p class="maturity-desc">Task-based automation — purpose-built IOS modules, idempotency, structured run reporting.</p>
+              <p class="maturity-desc">Task-based automation: purpose-built IOS modules, idempotency, structured run reporting.</p>
             </div>
           </div>
 
@@ -608,7 +608,7 @@
             <div class="maturity-level">4</div>
             <div>
               <div class="maturity-stage">Ansible + Templates</div>
-              <p class="maturity-desc">Separation of concerns — Jinja2 templates hold logic, inventory holds data.</p>
+              <p class="maturity-desc">Separation of concerns: Jinja2 templates hold logic, inventory holds data.</p>
             </div>
           </div>
 
@@ -616,7 +616,7 @@
             <div class="maturity-level">5</div>
             <div>
               <div class="maturity-stage">Ansible + NetBox</div>
-              <p class="maturity-desc">Source of truth — NetBox API replaces all static YAML, zero hardcoding.</p>
+              <p class="maturity-desc">Source of truth: NetBox API replaces all static YAML, zero hardcoding.</p>
             </div>
           </div>
 
@@ -624,7 +624,7 @@
             <div class="maturity-level">6</div>
             <div>
               <div class="maturity-stage">Service Orchestration (NSO) <span class="part2-badge">Part 2</span></div>
-              <p class="maturity-desc">Stateful service modeling — NSO maintains relationship between intent and device config, supports drift detection and atomic rollback.</p>
+              <p class="maturity-desc">Stateful service modeling: NSO maintains relationship between intent and device config, supports drift detection and atomic rollback.</p>
             </div>
           </div>
 
@@ -641,9 +641,9 @@
 
       <!-- ── SECTION 3 — WHAT'S INSIDE ── -->
       <section class="section-block">
-        <p class="section-label">// 03 — Lab Contents</p>
+        <p class="section-label">// 03 · Lab Contents</p>
         <h2 class="section-title">What's Inside</h2>
-        <p>13 labs across 5 automation levels. Every lab includes complete working code, step-by-step instructions, expected output, and troubleshooting notes from errors encountered during actual lab builds.</p>
+        <p>13 labs across 5 automation levels. Every lab includes complete working code, step-by-step instructions, expected output, and troubleshooting notes from errors encountered during lab builds.</p>
 
         <div class="lab-grid">
 
@@ -730,7 +730,7 @@
 
       <!-- ── SECTION 4 — LAB ENVIRONMENT ── -->
       <section class="section-block">
-        <p class="section-label">// 04 — Environment</p>
+        <p class="section-label">// 04 · Environment</p>
         <h2 class="section-title">Lab Environment</h2>
         <p>The lab runs entirely in EVE-NG using the following node images:</p>
 
@@ -766,19 +766,19 @@
           </tbody>
         </table>
 
-        <p>The AutomationBox runs Ansible, Python, and NetBox via Docker — all deployed and configured within the guide. No external services or cloud accounts required.</p>
+        <p>The AutomationBox runs Ansible, Python, and NetBox via Docker, all deployed and configured within the guide. No external services or cloud accounts required.</p>
       </section>
 
       <!-- ── SECTION 5 — DOWNLOAD ── -->
       <section class="section-block">
-        <p class="section-label">// 05 — Get the Guide</p>
+        <p class="section-label">// 05 · Get the Guide</p>
 
         <div class="download-card">
           <h2 class="download-heading">Download the Full Lab Guide</h2>
-          <p>The complete guide includes all 13 labs with full configuration code, Ansible playbooks, Jinja2 templates, NetBox data model setup, CI/CD pipeline scripts, drift detection playbooks, and a troubleshooting reference built from real errors encountered during the lab build.</p>
-          <p>Part 1 covers Levels 1 through 5. Part 2 — covering Cisco NSO, YANG models, and model-driven intent — is in development.</p>
+          <p>The complete guide includes all 13 labs with full configuration code, Ansible playbooks, Jinja2 templates, NetBox data model setup, CI/CD pipeline scripts, drift detection playbooks, and a troubleshooting reference built from errors encountered during the lab build.</p>
+          <p>Part 1 covers Levels 1 through 5. Part 2 (covering Cisco NSO, YANG models, and model-driven intent) is in development.</p>
           <a href="https://lateeflaw.gumroad.com/l/jozfdl" target="_blank" rel="noopener" class="download-btn">Get on Gumroad →</a>
-          <p class="download-note">Part 2 in development — follow on LinkedIn for updates.</p>
+          <p class="download-note">Part 2 in development. Follow on LinkedIn for updates.</p>
           <a href="https://www.linkedin.com/in/lateeflaw" class="linkedin-link">Follow on LinkedIn →</a>
         </div>
       </section>
