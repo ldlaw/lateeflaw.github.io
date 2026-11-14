@@ -421,7 +421,7 @@
       <p>Operates at Layer 2, encrypts the physical link rather than building tunnels. No per-tunnel throughput ceiling, no flow pinning. Both Azure ExpressRoute Direct (10G/100G) and Google Cloud Dedicated Interconnect (10G/100G/400G) support MACsec natively. For links running 40G or higher on Azure, use XPN ciphers. Non-XPN ciphers will cause sporadic session failures at those speeds.</p>
 
       <div class="callout-warning callout">
-        <p>Caveat: MACsec only encrypts the physical segment it's configured on. It does not extend into either provider's backbone. Google's own documentation states explicitly that MACsec for Cloud Interconnect does not provide encryption in transit within Google's network. AWS says the same. For regulated or compliance-driven environments, MACsec gives you an encrypted handoff, but the backbone segments on each side remain under provider-managed encryption, not yours.</p>
+        <p>Critical caveat: MACsec only encrypts the physical segment it's configured on. It does not extend into either provider's backbone. Google's own documentation states explicitly that MACsec for Cloud Interconnect does not provide encryption in transit within Google's network. AWS says the same. For regulated or compliance-driven environments, MACsec gives you an encrypted handoff, but the backbone segments on each side remain under provider-managed encryption, not yours.</p>
       </div>
 
       <h3>Option 3: Native encrypted interconnect (and where this is heading)</h3>
