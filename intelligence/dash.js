@@ -619,7 +619,7 @@ function boot() {
       const actions = el('div', 'actions'); for (const nid of [r.src, r.dst]) { const b = el('button', 'btn small', 'Open ' + m.nodeById.get(nid).label); b.type = 'button'; b.addEventListener('click', () => selectNode(nid)); actions.append(b); } const c = el('button', 'btn small', 'Clear selection'); c.type = 'button'; c.addEventListener('click', clearSelection); actions.append(c); box.append(actions);
     } else {
       head('Details', 'Select a node or a connection', null);
-      box.append(el('p', null, 'Click a node or an arc on the map, a chip below it, or a row in the table. The details, provenance and derived values appear here.'), el('p', 'derived', sim() ? 'Everything on this page is simulated test data.' : ''));
+      box.append(el('p', null, 'Click a node or an arc on the map, a chip below it, or a row in the table. The details, provenance and derived values appear here.'), el('p', 'derived', sim() ? 'Everything on this page is simulated data.' : ''));
     }
   }
 
