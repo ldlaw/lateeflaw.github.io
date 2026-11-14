@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" data-dash>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Internet Intelligence | Lateef Law</title>
+  <meta name="description" content="Interactive dashboard of network round-trip time and packet loss between ten locations. Preview: simulated test data only." />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="author" content="Lateef Law" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="dash.css" />
+  <script type="module" src="dash.js"></script>
+</head>
+<body data-phase="loading" data-sim="1" aria-busy="true">
+  <a class="skip" href="#main">Skip to the dashboard</a>
+
+  <nav id="navbar" aria-label="Site">
+    <div class="container nav-inner">
+      <a href="../index.html" class="nav-logo">LATEEF<span>.</span></a>
+      <a href="../index.html#projects" class="nav-back">&larr; Back to Site</a>
+    </div>
+  </nav>
+
+  <main id="main" class="container">
+    <header class="head">
+      <p class="kicker">Network performance &middot; Dashboard &middot; Preview</p>
+      <h1>Internet Intelligence</h1>
+      <p class="lede">Round-trip time and packet loss between ten locations, with the provenance and freshness of every value. <strong>This preview shows simulated test data only.</strong> No real measurement is involved.</p>
+    </header>
+
+    <div id="banner" class="banner" role="note" hidden></div>
+
+    <section id="status" class="status" aria-label="Data status">
+      <span id="st-chip" class="chip tone-m" data-state="LOADING"><i class="dot"></i>LOADING</span>
+      <span id="st-pub">Published: no data loaded</span>
+      <span id="st-newest"></span>
+      <span id="st-ctl">Control: not checked yet</span>
+      <span class="status-actions">
+        <button type="button" id="btn-check" class="btn small">Check control</button>
+        <button type="button" id="btn-refresh" class="btn small">Refresh data</button>
+      </span>
+    </section>
+
+    <section id="gate" class="gate" hidden><div id="gate-body"></div></section>
+
+    <div id="app" hidden>
+      <div id="dataonly">
+        <section id="kpis" class="kpis" aria-label="Summary of all published pairs"></section>
+
+        <form id="filters" class="filters" role="search" aria-label="Filter the pairs" autocomplete="off">
+          <label class="fld">Node<select id="f-node"><option value="all">All nodes</option></select></label>
+          <label class="fld">Country<select id="f-country"><option value="all">All countries</option></select></label>
+          <label class="fld sm">RTT from (ms)<input id="f-rttmin" type="number" min="0" step="1" inputmode="decimal" placeholder="0" /></label>
+          <label class="fld sm">RTT to (ms)<input id="f-rttmax" type="number" min="0" step="1" inputmode="decimal" placeholder="any" /></label>
+          <label class="fld">Packet loss
+            <select id="f-loss"><option value="any">Any</option><option value="lossy">Only pairs with loss</option><option value="clean">Only pairs without loss</option></select>
+          </label>
+          <label class="fld grow">Search<input id="f-text" type="search" maxlength="60" placeholder="city, country, id, quality" /></label>
+          <button type="button" id="f-reset" class="btn">Reset filters</button>
+          <output id="f-count" class="count" for="f-node f-country f-rttmin f-rttmax f-loss f-text" aria-live="polite"></output>
+        </form>
+        <div class="linkbar"><button type="button" id="btn-copy" class="btn small">Copy link</button><button type="button" id="btn-reset-view" class="btn small">Reset view</button><span id="link-note" class="count"></span><label class="fld grow" id="link-box" hidden>Link to this view<input id="link-text" type="text" readonly /></label></div>
+
+        <div class="grid">
+          <section class="card mapcard" aria-labelledby="map-h">
+            <div class="cardhead"><h2 id="map-h">Map</h2>
+              <div class="cardtools">
+                <div id="viewsw" class="viewsw" role="group" aria-label="Choose how to see the pairs: flat map, globe, latency matrix, round-trip time against distance, or packet loss"><button type="button" id="v-map" class="btn small" aria-pressed="true" aria-label="Show the flat map">Map</button><button type="button" id="v-globe" class="btn small" aria-pressed="false" aria-label="Show the globe">Globe</button><button type="button" id="v-matrix" class="btn small" aria-pressed="false" aria-label="Show the latency matrix">Matrix</button><button type="button" id="v-dist" class="btn small" aria-pressed="false" aria-label="Show round-trip time against distance">Distance</button><button type="button" id="v-loss" class="btn small" aria-pressed="false" aria-label="Show the packet loss list">Loss</button></div>
+                <div id="lenssw" class="viewsw" role="group" aria-label="Colour the matrix and the chart by" hidden><button type="button" id="l-rtt" class="btn small" aria-pressed="true" aria-label="Colour by round-trip time">By RTT</button><button type="button" id="l-loss" class="btn small" aria-pressed="false" aria-label="Colour by packet loss, the loss lens">By loss</button></div>
+                <div id="zoombar" class="zoombar" role="group" aria-label="Map view"></div>
+              </div>
+            </div>
+            <div id="framebar" class="framebar" hidden></div>
+            <div id="mapwrap" class="mapwrap"><svg id="map" role="group" aria-label="Map" preserveAspectRatio="xMidYMid meet"></svg></div>
+            <div id="globebox" hidden>
+              <div id="globebar" class="framebar idle" data-mode="idle"></div>
+              <div id="globectl" class="globectl"></div>
+              <div id="globewrap" class="globewrap"><svg id="globe" role="group" tabindex="0" aria-label="Globe" aria-describedby="globe-help" preserveAspectRatio="xMidYMid meet"></svg></div>
+              <p id="globe-help" class="sr">Arrow keys turn the globe and Home returns to the starting view. Every location can also be chosen with the buttons below the globe.</p>
+            </div>
+            <div id="stage" class="stage is-off">
+              <div id="stagebar" class="framebar idle" data-mode="idle"></div>
+              <div id="mxbox" class="is-off">
+                <div class="stage-tools"><label class="fld">Order the locations<select id="mx-order"><option value="alpha">Alphabetical</option><option value="west">West to east</option><option value="rtt">Median round-trip time</option></select></label></div>
+                <div id="mxwrap" class="mxwrap"></div>
+              </div>
+              <div id="scbox" hidden><div id="scwrap" class="scwrap"></div></div>
+              <div id="lsbox" hidden><div id="lswrap" class="lswrap"></div></div>
+            </div>
+            <ul id="legend" class="legend" aria-label="Legend and filters"></ul>
+            <div id="chips" class="chips" role="group" aria-label="Select a node"></div>
+          </section>
+          <aside id="inspector" class="card insp" aria-label="Details of the selection"></aside>
+        </div>
+      </div>
+
+      <section class="card tabs" aria-label="Pairs, provenance and freshness">
+        <div class="tablist" role="tablist" aria-label="Views">
+          <button type="button" id="tab-pairs" role="tab" aria-controls="panel-pairs" aria-selected="true">Pairs</button>
+          <button type="button" id="tab-prov" role="tab" aria-controls="panel-prov" aria-selected="false" tabindex="-1">Provenance</button>
+          <button type="button" id="tab-fresh" role="tab" aria-controls="panel-fresh" aria-selected="false" tabindex="-1">Freshness</button>
+        </div>
+        <div id="panel-pairs" role="tabpanel" aria-labelledby="tab-pairs">
+          <div class="sortbar"><label class="fld">Sort by<select id="sortSel"></select></label><button type="button" id="sortDir" class="btn small">Descending</button></div>
+          <div class="tablewrap">
+            <table id="pairs"><caption class="sr">Published pairs, one direction each, with round-trip time, packet loss, observation time, age, quality and distance. Column headers sort the table.</caption><thead><tr id="thead-row"></tr></thead><tbody id="tbody"></tbody></table>
+          </div>
+          <ul id="cards" class="cards" aria-label="Pairs"></ul>
+        </div>
+        <div id="panel-prov" role="tabpanel" aria-labelledby="tab-prov" class="panel" hidden></div>
+        <div id="panel-fresh" role="tabpanel" aria-labelledby="tab-fresh" class="panel" hidden></div>
+      </section>
+    </div>
+
+    <section id="ctl" class="card ctl" aria-labelledby="ctl-h">
+      <h2 id="ctl-h">Control monitor</h2>
+      <p class="ctl-intro">This page asks the data source whether it may show data, by itself, while the tab is visible. When the answer is anything but a fresh, valid &ldquo;on&rdquo;, the data is removed from the page and no data request is made. Nothing here is fetched while the tab is hidden.</p>
+      <div id="ctl-body"></div>
+    </section>
+
+    <section id="limits" class="limits" aria-labelledby="limits-h">
+      <h2 id="limits-h">What is here, what is planned, what this data cannot show</h2>
+      <div class="limits-grid">
+        <div><h3>Working in this preview</h3><ul>
+          <li>Map with selectable nodes and connections, four map windows</li>
+          <li>Globe: the same selection, loss colours and filters on a sphere you can turn by dragging, with the keyboard or with buttons</li>
+          <li>Latency matrix: one cell per pair, one published direction each, with a loss lens</li>
+          <li>Round-trip time against distance, with the physical floor drawn apart from the measurements</li>
+          <li>Packet loss list with the 95% interval for each pair</li>
+          <li>Filters for node, country, round-trip time, packet loss and text; the legend entries filter too</li>
+          <li>Sortable pair table, details, provenance, derived values labelled</li>
+          <li>Freshness states, switched-off and error states</li>
+          <li>Automatic control re-checks, a bounded lease, data removed (not hidden) when closed, re-opening only after repeated fresh confirmation</li>
+          <li>Shareable links: the address after the # holds the view, never the search text you type; Copy link, Reset view</li>
+        </ul></div>
+        <div><h3>Not built yet</h3><ul>
+          <li>Both directions of each pair, collection method details</li>
+        </ul></div>
+        <div><h3>Not available from this data</h3><ul>
+          <li>Time range, history or trends: each pair is one 36-minute window</li>
+          <li>Jitter, percentiles, routes, hops, networks</li>
+          <li>Live or streaming values</li>
+        </ul></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner"><p class="footer-copy">&copy; 2026 Lateef Law &middot; <a href="../index.html">lateeflaw.info</a> &middot; Preview build, simulated data</p></div>
+  </footer>
+
+  <div id="live" class="sr" role="status" aria-live="polite"></div>
+  <div id="tip" role="tooltip" hidden></div>
+  <noscript><p class="noscript">This dashboard needs JavaScript. Nothing is loaded without it.</p></noscript>
+</body>
+</html>
