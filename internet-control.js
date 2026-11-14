@@ -127,9 +127,9 @@ export function createMonitor(opts) {
     else d = Math.min(S.docRecheckMs || cfg.recheckMs, cfg.leaseMs * 0.4) * (1 + cfg.jitter * (2 * o.random() - 1));   // never more than 40% of the lease, so at least two attempts fit inside one
     return Math.max(Math.round(d), cfg.minGapMs - (t - S.lastCheckMs), 0);
   }
-  function schedule() {
+  function schedule(atMost) {   // atMost: an upper bound for the delay, used by wake() so a signal that arrives inside the minimum gap is answered when the gap ends
     o.clearTimer(S.timer); S.timer = null; if (!S.running || !o.visible()) { S.nextCheckMs = null; return; }
-    const d = delayFor(); S.nextCheckMs = o.now() + d; S.timer = o.setTimer(() => { S.timer = null; check('timer'); }, d);
+    const d = atMost === undefined ? delayFor() : Math.min(delayFor(), Math.max(atMost, 0)); S.nextCheckMs = o.now() + d; S.timer = o.setTimer(() => { S.timer = null; check('timer'); }, d);
   }
   async function check(trigger, { force = false } = {}) {
     if (!S.running) return; let t = o.now();
@@ -143,7 +143,11 @@ export function createMonitor(opts) {
   function wake(trigger) {   // anything that proves the tab is alive again: judge the lease against the wall clock first, then check if due
     if (!S.running) return; const t = o.now(), closed = evaluateLease(t);
     if (closed) logEv('lapsed-on-wake', trigger);
-    if (!S.lastCheckMs || t - S.lastCheckMs >= cfg.minGapMs) check(trigger); else { schedule(); if (closed) notify('lapsed'); }
+    if (!S.lastCheckMs || t - S.lastCheckMs >= cfg.minGapMs) check(trigger);
+    else {   // inside the minimum gap. Closed or failing: check as soon as the gap allows instead of waiting a whole interval. Healthy, restoring or a request in flight: as before.
+      const soon = !S.inFlight && (S.failures > 0 || (S.phase !== 'enabled' && S.phase !== 'restoring'));
+      schedule(soon ? cfg.minGapMs - (t - S.lastCheckMs) : undefined); if (closed) notify('lapsed');
+    }
   }
   return {
     start() { if (S.running) return; S.running = true; S.since = o.now(); logEv('start', `surface ${o.surface}, interval ${fmtDur(cfg.recheckMs)}, lease ${fmtDur(cfg.leaseMs)}`); return check('start', { force: true }); },
